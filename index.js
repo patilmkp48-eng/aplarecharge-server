@@ -945,19 +945,18 @@ app.post('/api/admin/transactions/:id/action', requireAdmin, (req, res) => {
   if (!txn) return res.status(404).json({ error: 'ट्रान्झॅक्शन सापडले नाही.' });
 
   const { action } = req.body; // 'refund' | 'markSuccess'
-  const user = db().users.find((u) => u.id === txn.userId);
+  const user = db().users.find((u) => u.id === txn.userId || u.phone === txn.userPhone);
 
-  if (action === 'refund' && txn.status !== 'failed') {
+  if (action === 'refund' && !txn.refunded && txn.status !== 'success') {
     if (user) {
-      // Return recharge amount minus any cashback that was already credited
-      const refundAmt = txn.status === 'success' ? txn.amount - (txn.cashback || 0) : txn.amount;
+      const refundAmt = Number(txn.amount || 0);
       user.walletBalance = Number((user.walletBalance + refundAmt).toFixed(2));
     }
     txn.status = 'failed';
     txn.refunded = true;
     txn.adminProfit = 0;
     txn.cashback = 0;
-    txn.message = 'Admin कडून Refund देण्यात आला';
+    txn.message = 'Admin कडून वॉलेटमध्ये Refund देण्यात आला';
   } else if (action === 'markSuccess' && txn.status !== 'success') {
     if (txn.refunded && user) {
       user.walletBalance = Number((user.walletBalance - txn.amount).toFixed(2));
@@ -992,7 +991,104 @@ app.post('/api/admin/add-money/:id/action', requireAdmin, (req, res) => {
   res.json({ success: true, request: item });
 });
 
+// ======================== 2-WAY CLOUD BRIDGE (LOCAL <-> RENDER.COM) ========================
+const RENDER_CLOUD_URL = 'https://aplarecharge-server.onrender.com';
+
+async function syncLocalWithRenderCloud() {
+  // Only run bridge on local PC (not when running inside Render itself)
+  if (process.env.RENDER) return;
+  try {
+    const d = db();
+    const usersToSync = d.users.length
+      ? d.users
+      : [{ phone: '9876543210', name: 'ग्राहक (Demo User)' }];
+
+    for (const u of usersToSync) {
+      const myAdd = (d.addMoneyRequests || [])
+        .filter((r) => r.userPhone === u.phone)
+        .map((r) => ({
+          id: r.id,
+          userPhone: r.userPhone,
+          userName: r.userName,
+          amount: r.amount,
+          utr: r.utrNumber,
+          status: r.status,
+          createdAt: r.createdAt,
+        }));
+      const myTxns = (d.transactions || [])
+        .filter((t) => t.userPhone === u.phone)
+        .map((t) => ({
+          id: t.id,
+          userPhone: t.userPhone,
+          userName: t.userName,
+          category: t.service,
+          operatorCode: t.operatorCode,
+          operatorName: t.operatorName,
+          number: t.number,
+          amount: t.amount,
+          cashback: t.cashback,
+          adminProfit: t.adminProfit,
+          status: t.status,
+          operatorRef: t.apiRef,
+          message: t.message,
+          createdAt: t.createdAt,
+        }));
+
+      const resp = await fetch(`${RENDER_CLOUD_URL}/api/client-sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: u.phone,
+          name: u.name,
+          clientAddMoney: myAdd,
+          clientTransactions: myTxns,
+        }),
+      });
+      if (!resp.ok) continue;
+      const cloudData = await resp.json();
+      let dirty = false;
+
+      let localUser = d.users.find((x) => x.phone === u.phone);
+      if (!localUser && cloudData.user) {
+        localUser = { ...cloudData.user };
+        d.users.unshift(localUser);
+        dirty = true;
+      }
+
+      if (Array.isArray(cloudData.addMoneyRequests)) {
+        for (const cr of cloudData.addMoneyRequests) {
+          if (!d.addMoneyRequests.find((x) => x.id === cr.id)) {
+            d.addMoneyRequests.unshift(cr);
+            if (localUser && cr.status === 'approved') {
+              localUser.walletBalance = Number((localUser.walletBalance + Number(cr.amount || 0)).toFixed(2));
+            }
+            dirty = true;
+          }
+        }
+      }
+
+      if (Array.isArray(cloudData.transactions)) {
+        for (const ct of cloudData.transactions) {
+          if (!d.transactions.find((x) => x.id === ct.id)) {
+            d.transactions.unshift(ct);
+            dirty = true;
+          }
+        }
+      }
+
+      if (localUser && cloudData.user && Number(cloudData.user.walletBalance) > Number(localUser.walletBalance)) {
+        localUser.walletBalance = Number(cloudData.user.walletBalance);
+        dirty = true;
+      }
+
+      if (dirty) save();
+    }
+  } catch (_) {}
+}
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 AplaRecharge Server running on http://localhost:${PORT}`);
   console.log(`🛠️  Admin Panel: http://localhost:${PORT}/admin (Default login: admin / admin123)`);
+  syncLocalWithRenderCloud();
+  setInterval(syncLocalWithRenderCloud, 5000);
 });
