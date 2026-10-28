@@ -9,6 +9,20 @@ export const OPERATORS = {
     { code: 'VI', name: 'Vi (Vodafone Idea)', color: '#ED1C24' },
     { code: 'BSNL', name: 'BSNL', color: '#1E88E5' },
   ],
+  postpaid: [
+    { code: 'JIOPOSTPAID', name: 'Jio Postpaid', color: '#0A3D91' },
+    { code: 'AIRTELPOSTPAID', name: 'Airtel Postpaid', color: '#E40000' },
+    { code: 'VIPOSTPAID', name: 'Vi Postpaid', color: '#ED1C24' },
+    { code: 'BSNLPOSTPAID', name: 'BSNL Postpaid', color: '#1E88E5' },
+  ],
+  broadband: [
+    { code: 'JIOFIBER', name: 'Jio Fiber / AirFiber', color: '#0A3D91' },
+    { code: 'AIRTELFIBER', name: 'Airtel Xstream Fiber', color: '#E40000' },
+    { code: 'BSNLFIBER', name: 'BSNL Bharat Fiber', color: '#1E88E5' },
+    { code: 'ACTFIBER', name: 'ACT Fibernet', color: '#00838F' },
+    { code: 'TATAPLAYFIBER', name: 'Tata Play Fiber', color: '#8E24AA' },
+    { code: 'HATHWAY', name: 'Hathway Broadband', color: '#E65100' },
+  ],
   dth: [
     { code: 'TATAPLAY', name: 'Tata Play', color: '#8E24AA' },
     { code: 'AIRTELDTH', name: 'Airtel Digital TV', color: '#E40000' },
@@ -22,6 +36,16 @@ export const OPERATORS = {
     { code: 'TATAPOWERMUM', name: 'Tata Power Mumbai', color: '#283593' },
     { code: 'BEST', name: 'BEST Mumbai', color: '#B71C1C' },
     { code: 'TORRENTPOWER', name: 'Torrent Power', color: '#EF6C00' },
+  ],
+  fastag: [
+    { code: 'ICICIFASTAG', name: 'ICICI Bank FASTag', color: '#B71C1C' },
+    { code: 'SBIFASTAG', name: 'SBI FASTag (State Bank)', color: '#1565C0' },
+    { code: 'HDFCFASTAG', name: 'HDFC Bank FASTag', color: '#0D47A1' },
+    { code: 'AXISFASTAG', name: 'Axis Bank FASTag', color: '#880E4F' },
+    { code: 'KOTAKFASTAG', name: 'Kotak Mahindra FASTag', color: '#C62828' },
+    { code: 'AIRTELFASTAG', name: 'Airtel Payments Bank FASTag', color: '#E40000' },
+    { code: 'IDFCFASTAG', name: 'IDFC First Bank FASTag', color: '#9C1D26' },
+    { code: 'BOBFASTAG', name: 'Bank of Baroda FASTag', color: '#EF6C00' },
   ],
 };
 

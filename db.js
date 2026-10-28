@@ -26,11 +26,18 @@ function defaultCommissions() {
   // apiCommission  = % the recharge API company gives you
   // userCashback   = % you give back to your customer
   // apiCode        = operator code expected by your API company (see their docs)
-  const defaults = { mobile: [3.0, 1.0], dth: [3.5, 1.5], electricity: [0.5, 0.0] };
+  const defaults = {
+    mobile: [3.0, 1.0],
+    postpaid: [1.2, 0.5],
+    broadband: [1.5, 0.5],
+    dth: [3.5, 1.5],
+    electricity: [0.5, 0.2],
+    fastag: [0.8, 0.3],
+  };
   const out = {};
   for (const [service, list] of Object.entries(OPERATORS)) {
     for (const op of list) {
-      const [api, user] = defaults[service];
+      const [api, user] = defaults[service] || [1.0, 0.5];
       out[op.code] = { apiCommission: api, userCashback: user, apiCode: op.code, enabled: true };
     }
   }
@@ -44,7 +51,7 @@ function defaultData() {
       admin: { username: 'admin', passwordHash: hashPassword('admin123'), mustChangePassword: true },
       mode: 'demo', // 'demo' or 'live'
       demoOtp: '123456',
-      services: { mobile: true, dth: true, electricity: true },
+      services: { mobile: true, postpaid: true, broadband: true, dth: true, electricity: true, fastag: true },
       api: {
         providerName: '',
         // URL template. Placeholders: {apikey} {number} {operator} {amount} {reqid}
@@ -95,6 +102,8 @@ export function load() {
     const fresh = defaultData();
     data.settings = { ...fresh.settings, ...data.settings };
     data.settings.services = { ...fresh.settings.services, ...data.settings.services };
+    if (data.settings.services.postpaid === undefined) data.settings.services.postpaid = true;
+    if (data.settings.services.broadband === undefined) data.settings.services.broadband = true;
     data.settings.api = { ...fresh.settings.api, ...data.settings.api };
     data.settings.paymentGateway = { ...fresh.settings.paymentGateway, ...(data.settings.paymentGateway || {}) };
     data.settings.planApi = { ...fresh.settings.planApi, ...(data.settings.planApi || {}) };

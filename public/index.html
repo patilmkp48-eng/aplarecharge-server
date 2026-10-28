@@ -122,17 +122,29 @@
         <!-- Quick Service On/Off Controls -->
         <div class="card p-5">
           <h3 class="text-sm font-bold text-white mb-3">⚡ झटपट सेवा चालू / बंद करा (Service Switches)</h3>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <label class="flex items-center justify-between p-3 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer">
-              <span>📱 मोबाईल रिचार्ज (Mobile)</span>
+              <span class="text-xs font-semibold">📱 प्रिपेड मोबाईल</span>
               <input type="checkbox" id="quick_mobile" onchange="saveQuickService()" class="w-5 h-5 accent-indigo-500" />
             </label>
             <label class="flex items-center justify-between p-3 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer">
-              <span>📺 DTH / डिश रिचार्ज</span>
+              <span class="text-xs font-semibold">📄 पोस्टपेड मोबाईल</span>
+              <input type="checkbox" id="quick_postpaid" onchange="saveQuickService()" class="w-5 h-5 accent-indigo-500" />
+            </label>
+            <label class="flex items-center justify-between p-3 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer">
+              <span class="text-xs font-semibold">🌐 ब्रॉडबँड व फायबर</span>
+              <input type="checkbox" id="quick_broadband" onchange="saveQuickService()" class="w-5 h-5 accent-indigo-500" />
+            </label>
+            <label class="flex items-center justify-between p-3 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer">
+              <span class="text-xs font-semibold">📺 DTH / डिश</span>
               <input type="checkbox" id="quick_dth" onchange="saveQuickService()" class="w-5 h-5 accent-indigo-500" />
             </label>
             <label class="flex items-center justify-between p-3 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer">
-              <span>💡 वीज बिल (Electricity)</span>
+              <span class="text-xs font-semibold">🚗 फास्टॅग (FASTag)</span>
+              <input type="checkbox" id="quick_fastag" onchange="saveQuickService()" class="w-5 h-5 accent-indigo-500" />
+            </label>
+            <label class="flex items-center justify-between p-3 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer">
+              <span class="text-xs font-semibold">💡 वीज बिल</span>
               <input type="checkbox" id="quick_electricity" onchange="saveQuickService()" class="w-5 h-5 accent-indigo-500" />
             </label>
           </div>
@@ -194,6 +206,10 @@
         <div class="card p-5">
           <h3 class="text-base font-bold text-white mb-1">📜 सर्व रिचार्ज आणि Refund नियंत्रण</h3>
           <p class="text-xs text-slate-400 mb-4">कोणताही रिचार्ज अडकला किंवा फेल झाला तर येथून एका क्लिकवर ग्राहकाच्या वॉलेटमध्ये <b>Refund</b> द्या.</p>
+          <div class="flex flex-wrap items-center gap-2 mb-3">
+            <input id="txnSearchInput" oninput="renderDashboard(true)" type="text" placeholder="🔍 ग्राहकाचे नाव / मोबाईल / रिचार्ज नंबर / TXN ID शोधा..." class="flex-1 min-w-[220px] px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-indigo-500" />
+          </div>
+          <div id="dfBar_txn" class="mb-4"></div>
           <div class="overflow-x-auto">
             <table class="w-full text-left text-xs">
               <thead class="text-slate-400 border-b border-slate-800">
@@ -218,6 +234,10 @@
         <div class="card p-5">
           <h3 class="text-base font-bold text-white mb-1">🏦 वॉलेट टॉपअप (Payment Gateway) आणि Add Money हिस्ट्री</h3>
           <p class="text-xs text-slate-400 mb-4">ग्राहकांनी ॲपमधून ऑटोमॅटिक UPI पेमेंट गेटवेने ॲड केलेले पैसे (UTR सह) आणि मॅन्युअल विनंत्या येथे लाईव्ह दिसतात.</p>
+          <div class="flex flex-wrap items-center gap-2 mb-3">
+            <input id="addSearchInput" oninput="renderDashboard(true)" type="text" placeholder="🔍 ग्राहकाचे नाव / मोबाईल / UTR / Order ID शोधा..." class="flex-1 min-w-[220px] px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-indigo-500" />
+          </div>
+          <div id="dfBar_add" class="mb-4"></div>
           <div class="overflow-x-auto">
             <table class="w-full text-left text-xs">
               <thead class="text-slate-400 border-b border-slate-800">
@@ -430,6 +450,8 @@
           </div>
         </div>
         <div class="p-5 overflow-y-auto space-y-5">
+          <!-- Date Filter for This User's Passbook -->
+          <div id="dfBar_ud"></div>
           <!-- 5 Individual Stat Cards for This User -->
           <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <div class="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30">
@@ -690,13 +712,130 @@
 
     function openUserDetail(phone) {
       selectedUserPhone = String(phone || '').trim();
+      dateFilters.ud = { mode: 'all', from: '', to: '' };
       document.getElementById('userDetailModal').classList.remove('hidden');
+      renderDateFilterBar('ud');
       renderUserDetailModal();
     }
 
     function closeUserDetail() {
       selectedUserPhone = null;
       document.getElementById('userDetailModal').classList.add('hidden');
+    }
+
+    // ======================== DATE FILTER (आज / काल / ७ दिवस / महिना / कस्टम तारीख) ========================
+    const dateFilters = {
+      txn: { mode: 'all', from: '', to: '' },
+      add: { mode: 'all', from: '', to: '' },
+      ud: { mode: 'all', from: '', to: '' },
+    };
+    const DF_OPTIONS = [
+      ['all', '📋 सर्व'],
+      ['today', '📅 आज (Today)'],
+      ['yesterday', '⏮️ काल (Yesterday)'],
+      ['7days', '🗓️ मागील ७ दिवस'],
+      ['month', '📆 हा महिना'],
+      ['lastmonth', '📆 मागील महिना'],
+      ['custom', '🔎 तारखेनुसार (Custom)'],
+    ];
+
+    function toLocalYmd(d) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    // Returns [fromYmd, toYmd] (inclusive, local date) or null for "all"
+    function getDateRange(scope) {
+      const f = dateFilters[scope];
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+      switch (f.mode) {
+        case 'today': return [toLocalYmd(today), toLocalYmd(today)];
+        case 'yesterday': { const y = addDays(today, -1); return [toLocalYmd(y), toLocalYmd(y)]; }
+        case '7days': return [toLocalYmd(addDays(today, -6)), toLocalYmd(today)];
+        case 'month': return [toLocalYmd(new Date(today.getFullYear(), today.getMonth(), 1)), toLocalYmd(today)];
+        case 'lastmonth': {
+          const first = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+          const last = new Date(today.getFullYear(), today.getMonth(), 0);
+          return [toLocalYmd(first), toLocalYmd(last)];
+        }
+        case 'custom': {
+          if (!f.from && !f.to) return null;
+          const from = f.from || '0000-01-01';
+          const to = f.to || '9999-12-31';
+          return from <= to ? [from, to] : [to, from];
+        }
+        default: return null;
+      }
+    }
+
+    function filterByDate(list, scope) {
+      const range = getDateRange(scope);
+      if (!range) return list;
+      const [from, to] = range;
+      return (list || []).filter(item => {
+        if (!item.createdAt) return false;
+        const d = new Date(item.createdAt);
+        if (isNaN(d)) return false;
+        const ymd = toLocalYmd(d);
+        return ymd >= from && ymd <= to;
+      });
+    }
+
+    function rangeLabel(scope) {
+      const range = getDateRange(scope);
+      if (!range) return 'सर्व तारखा';
+      const fmt = (ymd) => { const [y, m, d] = ymd.split('-'); return `${d}/${m}/${y}`; };
+      return range[0] === range[1] ? fmt(range[0]) : `${fmt(range[0])} ते ${fmt(range[1])}`;
+    }
+
+    function setDateFilter(scope, mode) {
+      dateFilters[scope].mode = mode;
+      if (mode === 'custom' && !dateFilters[scope].from && !dateFilters[scope].to) {
+        const t = toLocalYmd(new Date());
+        dateFilters[scope].from = t;
+        dateFilters[scope].to = t;
+      }
+      renderDateFilterBar(scope);
+      if (scope === 'ud') renderUserDetailModal(); else renderDashboard(true);
+    }
+
+    function setCustomDate(scope, which, value) {
+      dateFilters[scope][which] = value;
+      dateFilters[scope].mode = 'custom';
+      if (scope === 'ud') renderUserDetailModal(); else renderDashboard(true);
+      updateDateFilterSummary(scope);
+    }
+
+    function renderDateFilterBar(scope) {
+      const el = document.getElementById('dfBar_' + scope);
+      if (!el) return;
+      const f = dateFilters[scope];
+      const btns = DF_OPTIONS.map(([key, label]) => {
+        const active = f.mode === key;
+        return `<button onclick="setDateFilter('${scope}','${key}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border ${active ? 'bg-indigo-600 border-indigo-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300 hover:border-indigo-500'}">${label}</button>`;
+      }).join('');
+      const custom = f.mode === 'custom' ? `
+        <div class="flex flex-wrap items-center gap-2 mt-2">
+          <label class="text-[11px] text-slate-400 font-semibold">पासून (From):</label>
+          <input type="date" value="${f.from}" onchange="setCustomDate('${scope}','from',this.value)" class="px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-white text-xs [color-scheme:dark]" />
+          <label class="text-[11px] text-slate-400 font-semibold">पर्यंत (To):</label>
+          <input type="date" value="${f.to}" onchange="setCustomDate('${scope}','to',this.value)" class="px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-white text-xs [color-scheme:dark]" />
+        </div>` : '';
+      el.innerHTML = `
+        <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+          <div class="flex flex-wrap items-center gap-1.5">${btns}</div>
+          ${custom}
+          <div id="dfSummary_${scope}" class="mt-2 text-[11px] text-slate-400"></div>
+        </div>`;
+      updateDateFilterSummary(scope);
+    }
+
+    const dfSummaryCache = { txn: '', add: '', ud: '' };
+    function updateDateFilterSummary(scope, text) {
+      if (text !== undefined) dfSummaryCache[scope] = text;
+      const el = document.getElementById('dfSummary_' + scope);
+      if (el) el.innerHTML = `📌 कालावधी: <b class="text-indigo-300">${rangeLabel(scope)}</b>${dfSummaryCache[scope] ? ' &nbsp;|&nbsp; ' + dfSummaryCache[scope] : ''}`;
     }
 
     function renderUserDetailModal() {
@@ -710,15 +849,16 @@
         totalCashback: 0,
         blocked: false,
       };
-      const userAdds = (addMoneyRequests || []).filter(r => r.userPhone === u.phone || r.userId === u.id);
+      const userAdds = filterByDate((addMoneyRequests || []).filter(r => r.userPhone === u.phone || r.userId === u.id), 'ud');
       const approvedAdds = userAdds.filter(r => r.status === 'approved' || r.status === 'success');
       const totalAddedAmt = approvedAdds.reduce((s, r) => s + Number(r.amount || 0), 0);
 
-      const userTxns = (transactions || []).filter(t => t.userPhone === u.phone || t.userId === u.id);
+      const userTxns = filterByDate((transactions || []).filter(t => t.userPhone === u.phone || t.userId === u.id), 'ud');
       const successTxns = userTxns.filter(t => t.status === 'success');
       const totalSpentAmt = successTxns.reduce((s, t) => s + Number(t.amount || 0), 0);
-      const totalCashbackAmt = successTxns.reduce((s, t) => s + Number(t.cashback || 0), 0) || Number(u.totalCashback || 0);
+      const totalCashbackAmt = successTxns.reduce((s, t) => s + Number(t.cashback || 0), 0);
       const totalProfitAmt = successTxns.reduce((s, t) => s + Number(t.adminProfit || 0), 0);
+      updateDateFilterSummary('ud', `💳 जमा: <b class="text-emerald-300">${approvedAdds.length} वेळा (₹${totalAddedAmt.toFixed(2)})</b> &nbsp;|&nbsp; ⚡ रिचार्ज: <b class="text-sky-300">${userTxns.length} व्यवहार (यशस्वी ₹${totalSpentAmt.toFixed(2)})</b>`);
 
       document.getElementById('ud_title').textContent = `${u.name} — स्वतंत्र खातेवही (Passbook)`;
       document.getElementById('ud_subtitle').textContent = `📱 मोबाईल नंबर: ${u.phone}  |  🆔 Customer ID: ${u.id}`;
@@ -750,7 +890,7 @@
           <td class="py-2 font-mono text-slate-200 text-[11px]">${r.utrNumber}</td>
           <td class="py-2">${statusBadge(r.status)}</td>
         </tr>
-      `).join('') : '<tr><td colspan="4" class="py-4 text-center text-slate-500">या ग्राहकाने अजून कोणतेही पैसे वॉलेटमध्ये ॲड केलेले नाहीत</td></tr>';
+      `).join('') : `<tr><td colspan="4" class="py-4 text-center text-slate-500">या कालावधीत (${rangeLabel('ud')}) ग्राहकाने कोणतेही पैसे वॉलेटमध्ये ॲड केलेले नाहीत</td></tr>`;
 
       document.getElementById('ud_txnBody').innerHTML = userTxns.length ? userTxns.map(t => `
         <tr>
@@ -769,7 +909,7 @@
           </td>
           <td class="py-2">${statusBadge(t.status)}</td>
         </tr>
-      `).join('') : '<tr><td colspan="5" class="py-4 text-center text-slate-500">या ग्राहकाने अजून कोणताही रिचार्ज केलेला नाही</td></tr>';
+      `).join('') : `<tr><td colspan="5" class="py-4 text-center text-slate-500">या कालावधीत (${rangeLabel('ud')}) ग्राहकाने कोणताही रिचार्ज केलेला नाही</td></tr>`;
     }
 
     function renderDashboard(isSilentPoll = false) {
@@ -800,14 +940,38 @@
 
       // Quick service checkboxes
       document.getElementById('quick_mobile').checked = settings.services.mobile !== false;
+      document.getElementById('quick_postpaid').checked = settings.services.postpaid !== false;
+      document.getElementById('quick_broadband').checked = settings.services.broadband !== false;
       document.getElementById('quick_dth').checked = settings.services.dth !== false;
+      document.getElementById('quick_fastag').checked = settings.services.fastag !== false;
       document.getElementById('quick_electricity').checked = settings.services.electricity !== false;
 
       // Tables (Always live-updated)
       document.getElementById('recentAddMoneyTable').innerHTML = renderAddMoneyRows(addMoneyRequests.slice(0, 8), users, false);
-      document.getElementById('addMoneyTable').innerHTML = renderAddMoneyRows(addMoneyRequests, users, true);
       document.getElementById('recentTxnTable').innerHTML = renderTxnRows(transactions.slice(0, 10));
-      document.getElementById('allTxnTable').innerHTML = renderTxnRows(transactions);
+
+      // Add Money tab: search + date filter
+      const addQ = (document.getElementById('addSearchInput')?.value || '').trim().toLowerCase();
+      const filteredAdds = filterByDate(addMoneyRequests, 'add').filter(r => !addQ ||
+        String(r.userName || '').toLowerCase().includes(addQ) ||
+        String(r.userPhone || '').includes(addQ) ||
+        String(r.utrNumber || '').toLowerCase().includes(addQ) ||
+        String(r.id || '').toLowerCase().includes(addQ));
+      document.getElementById('addMoneyTable').innerHTML = renderAddMoneyRows(filteredAdds, users, true);
+      const addOk = filteredAdds.filter(r => r.status === 'approved');
+      updateDateFilterSummary('add', `एकूण <b class="text-white">${filteredAdds.length}</b> नोंदी &nbsp;|&nbsp; यशस्वी जमा: <b class="text-emerald-300">₹${addOk.reduce((s, r) => s + Number(r.amount || 0), 0).toFixed(2)}</b>`);
+
+      // Transactions tab: search + date filter
+      const txnQ = (document.getElementById('txnSearchInput')?.value || '').trim().toLowerCase();
+      const filteredTxns = filterByDate(transactions, 'txn').filter(t => !txnQ ||
+        String(t.userName || '').toLowerCase().includes(txnQ) ||
+        String(t.userPhone || '').includes(txnQ) ||
+        String(t.number || '').toLowerCase().includes(txnQ) ||
+        String(t.operatorName || '').toLowerCase().includes(txnQ) ||
+        String(t.id || '').toLowerCase().includes(txnQ));
+      document.getElementById('allTxnTable').innerHTML = renderTxnRows(filteredTxns);
+      const txnOk = filteredTxns.filter(t => t.status === 'success');
+      updateDateFilterSummary('txn', `एकूण <b class="text-white">${filteredTxns.length}</b> रिचार्ज (यशस्वी ${txnOk.length}) &nbsp;|&nbsp; रक्कम: <b class="text-sky-300">₹${txnOk.reduce((s, t) => s + Number(t.amount || 0), 0).toFixed(2)}</b> &nbsp;|&nbsp; नफा: <b class="text-emerald-300">₹${txnOk.reduce((s, t) => s + Number(t.adminProfit || 0), 0).toFixed(2)}</b>`);
 
       // Users Table (With per-user separate totals & search filter)
       const searchQ = (document.getElementById('userSearchInput')?.value || '').trim().toLowerCase();
@@ -866,6 +1030,14 @@
 
       // Commission Table
       const commRows = [];
+      const serviceBadgeMap = {
+        mobile: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-300">📱 प्रिपेड</span>',
+        postpaid: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300">📄 पोस्टपेड</span>',
+        broadband: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300">🌐 ब्रॉडबँड</span>',
+        dth: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300">📺 DTH डिश</span>',
+        fastag: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/20 text-teal-300">🚗 फास्टॅग</span>',
+        electricity: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500/20 text-orange-300">💡 वीज बिल</span>',
+      };
       for (const [service, list] of Object.entries(operators)) {
         for (const op of list) {
           const c = commissions[op.code] || { apiCommission: 0, userCashback: 0, apiCode: op.code, enabled: true };
@@ -873,7 +1045,7 @@
           commRows.push(`
             <tr>
               <td class="py-2.5 font-bold text-white">${op.name}</td>
-              <td class="py-2.5 uppercase text-slate-400">${service}</td>
+              <td class="py-2.5">${serviceBadgeMap[service] || service}</td>
               <td class="py-2.5"><input id="comm_code_${op.code}" value="${c.apiCode}" class="w-28 px-2 py-1 rounded bg-slate-900 border border-slate-700 text-white font-mono" /></td>
               <td class="py-2.5"><input id="comm_api_${op.code}" type="number" step="0.1" value="${c.apiCommission}" class="w-20 px-2 py-1 rounded bg-slate-900 border border-slate-700 text-white" /> %</td>
               <td class="py-2.5"><input id="comm_user_${op.code}" type="number" step="0.1" value="${c.userCashback}" class="w-20 px-2 py-1 rounded bg-slate-900 border border-slate-700 text-white" /> %</td>
@@ -910,7 +1082,10 @@
     async function saveQuickService() {
       const services = {
         mobile: document.getElementById('quick_mobile').checked,
+        postpaid: document.getElementById('quick_postpaid').checked,
+        broadband: document.getElementById('quick_broadband').checked,
         dth: document.getElementById('quick_dth').checked,
+        fastag: document.getElementById('quick_fastag').checked,
         electricity: document.getElementById('quick_electricity').checked,
       };
       await apiCall('/api/admin/settings', 'POST', { services });
@@ -993,6 +1168,9 @@
       document.getElementById('dashboardView').classList.remove('hidden');
       loadOverview(false);
     }
+
+    renderDateFilterBar('txn');
+    renderDateFilterBar('add');
 
     // Live Auto-Sync every 3 seconds so any Wallet Topup or Recharge in the Mobile App reflects immediately!
     setInterval(() => {

@@ -42,6 +42,35 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+// Ledger Recalculation: Guarantees user.walletBalance & totalCashback always match exact AddMoney - Recharges + Cashback
+function recalculateUserLedger(user) {
+  if (!user) return;
+  const d = db();
+  const base = user.initialBalance !== undefined
+    ? Number(user.initialBalance)
+    : (d.settings.mode === 'demo' ? 500 : 0);
+  const manualDebit = Number(user.manualDebit || 0);
+
+  const userAdds = (d.addMoneyRequests || []).filter(
+    (r) => (r.userPhone === user.phone || r.userId === user.id) && r.status === 'approved'
+  );
+  const totalAdded = userAdds.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+
+  const userTxns = (d.transactions || []).filter(
+    (t) => t.userPhone === user.phone || t.userId === user.id
+  );
+  const chargedTxns = userTxns.filter(
+    (t) => t.status === 'success' || t.status === 'pending' || (t.status === 'failed' && !t.refunded)
+  );
+  const totalSpent = chargedTxns.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+
+  const successTxns = userTxns.filter((t) => t.status === 'success');
+  const totalCashback = successTxns.reduce((s, t) => s + (Number(t.cashback) || 0), 0);
+
+  user.walletBalance = Number(Math.max(0, base + totalAdded - manualDebit - totalSpent + totalCashback).toFixed(2));
+  user.totalCashback = Number(totalCashback.toFixed(2));
+}
+
 // ======================== PUBLIC & USER API ========================
 
 // App Config & Operators
@@ -75,9 +104,14 @@ app.get('/api/config', (req, res) => {
 
 // Direct Mobile App Sync Endpoint (Bi-directionally syncs user wallet, addMoney, txns, settings & commissions with Web Admin Panel)
 app.post('/api/client-sync', (req, res) => {
-  const { phone, name, clientAddMoney, clientTransactions } = req.body;
+  const { phone, name, clientAddMoney, clientTransactions, syncServices } = req.body;
   const cleanPhone = String(phone || '9876543210').replace(/\D/g, '');
   let dirty = false;
+
+  if (syncServices && typeof syncServices === 'object') {
+    db().settings.services = { ...db().settings.services, ...syncServices };
+    dirty = true;
+  }
 
   let user = db().users.find((u) => u.phone === cleanPhone);
   if (!user && cleanPhone.length === 10) {
@@ -187,6 +221,9 @@ app.post('/api/client-sync', (req, res) => {
     }
   }
 
+  if (user) {
+    recalculateUserLedger(user);
+  }
   if (dirty) save();
 
   const s = db().settings;
@@ -821,6 +858,9 @@ app.post('/api/admin/login', (req, res) => {
 
 app.get('/api/admin/overview', requireAdmin, (req, res) => {
   const d = db();
+  for (const u of d.users || []) {
+    recalculateUserLedger(u);
+  }
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayTxns = d.transactions.filter((t) => t.createdAt && t.createdAt.startsWith(todayStr));
   const successTxns = d.transactions.filter((t) => t.status === 'success');
@@ -858,8 +898,8 @@ app.get('/api/admin/overview', requireAdmin, (req, res) => {
     commissions: d.commissions,
     operators: OPERATORS,
     users: d.users,
-    transactions: d.transactions.slice(0, 200),
-    addMoneyRequests: allAddMoney.slice(0, 100),
+    transactions: d.transactions.slice(0, 5000),
+    addMoneyRequests: allAddMoney.slice(0, 5000),
     paymentOrders: (d.paymentOrders || []).slice(0, 100),
   });
 });
@@ -889,6 +929,10 @@ app.post('/api/admin/settings', requireAdmin, (req, res) => {
 
   save();
   res.json({ success: true, message: 'सेटिंग्ज यशस्वीरीत्या सेव्ह झाल्या!' });
+
+  if (!process.env.RENDER) {
+    pushSettingsToRenderCloud({ services: d.settings.services, mode: d.settings.mode });
+  }
 });
 
 // Update Operator Commissions
@@ -993,12 +1037,44 @@ app.post('/api/admin/add-money/:id/action', requireAdmin, (req, res) => {
 
 // ======================== 2-WAY CLOUD BRIDGE (LOCAL <-> RENDER.COM) ========================
 const RENDER_CLOUD_URL = 'https://aplarecharge-server.onrender.com';
+let renderAdminTokenCache = null;
+
+async function pushSettingsToRenderCloud(settingsPayload) {
+  if (process.env.RENDER) return;
+  try {
+    if (!renderAdminTokenCache) {
+      const loginResp = await fetch(`${RENDER_CLOUD_URL}/api/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'admin', password: 'admin123' }),
+      });
+      if (loginResp.ok) {
+        const loginData = await loginResp.json();
+        renderAdminTokenCache = loginData.token;
+      }
+    }
+    if (renderAdminTokenCache) {
+      const resp = await fetch(`${RENDER_CLOUD_URL}/api/admin/settings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${renderAdminTokenCache}`,
+        },
+        body: JSON.stringify(settingsPayload),
+      });
+      if (resp.status === 401) {
+        renderAdminTokenCache = null;
+      }
+    }
+  } catch (_) {}
+}
 
 async function syncLocalWithRenderCloud() {
   // Only run bridge on local PC (not when running inside Render itself)
   if (process.env.RENDER) return;
   try {
     const d = db();
+    pushSettingsToRenderCloud({ services: d.settings.services, mode: d.settings.mode });
     const usersToSync = d.users.length
       ? d.users
       : [{ phone: '9876543210', name: 'ग्राहक (Demo User)' }];
@@ -1042,6 +1118,7 @@ async function syncLocalWithRenderCloud() {
           name: u.name,
           clientAddMoney: myAdd,
           clientTransactions: myTxns,
+          syncServices: d.settings.services,
         }),
       });
       if (!resp.ok) continue;
@@ -1076,9 +1153,12 @@ async function syncLocalWithRenderCloud() {
         }
       }
 
-      if (localUser && cloudData.user && Number(cloudData.user.walletBalance) > Number(localUser.walletBalance)) {
-        localUser.walletBalance = Number(cloudData.user.walletBalance);
-        dirty = true;
+      if (localUser) {
+        const prevBal = localUser.walletBalance;
+        recalculateUserLedger(localUser);
+        if (localUser.walletBalance !== prevBal) {
+          dirty = true;
+        }
       }
 
       if (dirty) save();
