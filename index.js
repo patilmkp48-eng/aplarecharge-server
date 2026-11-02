@@ -3,7 +3,7 @@ import cors from 'cors';
 import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { load, save, db, newId, newToken, hashPassword, verifyPassword } from './db.js';
+import { load, save, db, newId, newToken, hashPassword, verifyPassword, mergeDatabaseState } from './db.js';
 import { OPERATORS, plansFor, findOperator } from './catalog.js';
 import { doRecharge, demoFetchBill } from './provider.js';
 
@@ -42,22 +42,34 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// Ledger Recalculation: Guarantees user.walletBalance & totalCashback always match exact AddMoney - Recharges + Cashback
+// Ledger Recalculation: Guarantees user.walletBalance & totalCashback always match exact AddMoney - Recharges - Admin Debits + Cashback
 function recalculateUserLedger(user) {
   if (!user) return;
   const d = db();
   const base = user.initialBalance !== undefined
     ? Number(user.initialBalance)
     : (d.settings.mode === 'demo' ? 500 : 0);
-  const manualDebit = Number(user.manualDebit || 0);
+
+  // Calculate total admin debits from transactions
+  const debitTxns = (d.transactions || []).filter(
+    (t) => (t.userPhone === user.phone || t.userId === user.id) &&
+      (t.service === 'debit' || t.operatorCode === 'ADMIN_DEBIT') &&
+      t.status === 'success'
+  );
+  const totalDebitedFromTxns = debitTxns.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const manualDebit = Math.max(Number(user.manualDebit || 0), totalDebitedFromTxns);
+  user.manualDebit = Number(manualDebit.toFixed(2));
 
   const userAdds = (d.addMoneyRequests || []).filter(
     (r) => (r.userPhone === user.phone || r.userId === user.id) && r.status === 'approved'
   );
   const totalAdded = userAdds.reduce((s, r) => s + (Number(r.amount) || 0), 0);
 
+  // Recharge transactions (exclude debits so they are not subtracted twice)
   const userTxns = (d.transactions || []).filter(
-    (t) => t.userPhone === user.phone || t.userId === user.id
+    (t) => (t.userPhone === user.phone || t.userId === user.id) &&
+      t.service !== 'debit' &&
+      t.operatorCode !== 'ADMIN_DEBIT'
   );
   const chargedTxns = userTxns.filter(
     (t) => t.status === 'success' || t.status === 'pending' || (t.status === 'failed' && !t.refunded)
@@ -102,10 +114,51 @@ app.get('/api/config', (req, res) => {
   });
 });
 
+// Update User Profile (Name & Avatar only — Registered Login Phone is strictly immutable!)
+app.post('/api/user/update-profile', (req, res) => {
+  const { phone, oldPhone, name, avatar } = req.body;
+  const cleanPhone = String(phone || oldPhone || '').replace(/\D/g, '');
+
+  if (cleanPhone.length !== 10) {
+    return res.status(400).json({ error: 'कृपया वैध १० अंकी नोंदणीकृत मोबाईल नंबर टाका.' });
+  }
+
+  let user = db().users.find((u) => u.phone === cleanPhone);
+  if (!user) {
+    user = {
+      id: newId('USR'),
+      phone: cleanPhone,
+      name: (name || 'ग्राहक ' + cleanPhone.slice(-4)).trim(),
+      walletBalance: db().settings.mode === 'demo' ? 500 : 0,
+      totalCashback: 0,
+      avatar: avatar || null,
+      blocked: false,
+      createdAt: new Date().toISOString(),
+    };
+    db().users.unshift(user);
+  } else {
+    // Only update name and avatar; NEVER modify registered phone
+    if (name && name.trim()) user.name = name.trim();
+    if (avatar !== undefined) user.avatar = avatar;
+  }
+
+  recalculateUserLedger(user);
+  save();
+  res.json({ success: true, message: 'प्रोफाईल माहिती यशस्वीरीत्या सेव्ह झाली!', user });
+});
+
+function safeIsoDate(val) {
+  if (val) {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+  return new Date().toISOString();
+}
+
 // Direct Mobile App Sync Endpoint (Bi-directionally syncs user wallet, addMoney, txns, settings & commissions with Web Admin Panel)
 app.post('/api/client-sync', (req, res) => {
   const { phone, name, clientAddMoney, clientTransactions, syncServices } = req.body;
-  const cleanPhone = String(phone || '9876543210').replace(/\D/g, '');
+  const cleanPhone = String(phone || '').replace(/\D/g, '');
   let dirty = false;
 
   if (syncServices && typeof syncServices === 'object') {
@@ -113,7 +166,7 @@ app.post('/api/client-sync', (req, res) => {
     dirty = true;
   }
 
-  let user = db().users.find((u) => u.phone === cleanPhone);
+  let user = cleanPhone.length === 10 ? db().users.find((u) => u.phone === cleanPhone) : null;
   if (!user && cleanPhone.length === 10) {
     user = {
       id: newId('USR'),
@@ -126,7 +179,7 @@ app.post('/api/client-sync', (req, res) => {
     };
     db().users.unshift(user);
     dirty = true;
-  } else if (user && name && name.trim() && user.name !== name.trim()) {
+  } else if (user && name && name.trim() && !name.includes('?') && user.name !== name.trim()) {
     user.name = name.trim();
     dirty = true;
   }
@@ -146,6 +199,7 @@ app.post('/api/client-sync', (req, res) => {
         const amt = Number(item.amount) || 0;
         const rawStatus = String(item.status || 'APPROVED').toLowerCase();
         const normStatus = rawStatus === 'approved' || rawStatus === 'success' ? 'approved' : rawStatus === 'pending' ? 'pending' : 'rejected';
+        const itemDate = safeIsoDate(item.createdAt);
         if (amt > 0) {
           if (normStatus === 'approved') {
             user.walletBalance = Number((user.walletBalance + amt).toFixed(2));
@@ -158,7 +212,7 @@ app.post('/api/client-sync', (req, res) => {
             amount: amt,
             utrNumber: String(item.utr || item.utrNumber || 'Gateway Verified'),
             status: normStatus,
-            createdAt: new Date().toISOString(),
+            createdAt: itemDate,
           });
           db().paymentOrders.unshift({
             orderId: reqId,
@@ -171,8 +225,8 @@ app.post('/api/client-sync', (req, res) => {
             mode: db().settings.paymentGateway?.mode || 'sandbox',
             status: normStatus === 'approved' ? 'SUCCESS' : 'FAILED',
             credited: normStatus === 'approved',
-            bankUtr: String(item.utr || ''),
-            createdAt: new Date().toISOString(),
+            bankUtr: String(item.utr || item.utrNumber || ''),
+            createdAt: itemDate,
           });
           dirty = true;
         }
@@ -180,7 +234,7 @@ app.post('/api/client-sync', (req, res) => {
     }
   }
 
-  // Sync any Recharges completed in the Mobile App while offline
+  // Sync any Recharges or Admin Debits completed in the Mobile App / Local Server
   if (user && Array.isArray(clientTransactions)) {
     for (const t of clientTransactions) {
       const txnId = String(t.id || '').trim();
@@ -191,8 +245,12 @@ app.post('/api/client-sync', (req, res) => {
         const cb = Number(t.cashback) || 0;
         const prof = Number(t.adminProfit) || 0;
         const st = String(t.status || 'SUCCESS').toLowerCase();
+        const svc = String(t.category || t.service || 'mobile').toLowerCase();
+        const opCode = String(t.operatorCode || 'JIO');
+        const isDebit = svc === 'debit' || opCode === 'ADMIN_DEBIT';
+        const txnDate = safeIsoDate(t.createdAt);
         if (amt > 0) {
-          if (st === 'success') {
+          if (!isDebit && st === 'success') {
             user.walletBalance = Number(Math.max(0, user.walletBalance - amt + cb).toFixed(2));
             user.totalCashback = Number(((user.totalCashback || 0) + cb).toFixed(2));
           }
@@ -201,19 +259,19 @@ app.post('/api/client-sync', (req, res) => {
             userId: user.id,
             userPhone: cleanPhone,
             userName: user.name,
-            service: String(t.category || 'mobile').toLowerCase(),
-            operatorCode: String(t.operatorCode || 'JIO'),
-            operatorName: String(t.operatorName || 'Reliance Jio'),
-            number: String(t.number || ''),
-            customerName: '',
+            service: isDebit ? 'debit' : svc,
+            operatorCode: isDebit ? 'ADMIN_DEBIT' : opCode,
+            operatorName: String(t.operatorName || (isDebit ? 'Admin वजावट' : 'Reliance Jio')),
+            number: String(t.number || cleanPhone),
+            customerName: isDebit ? user.name : '',
             amount: amt,
-            cashback: cb,
-            adminProfit: prof,
+            cashback: isDebit ? 0 : cb,
+            adminProfit: isDebit ? 0 : prof,
             status: st === 'refunded' ? 'failed' : st,
             refunded: st === 'refunded',
-            apiRef: String(t.operatorRef || ''),
-            message: String(t.message || 'रिचार्ज यशस्वी'),
-            createdAt: new Date().toISOString(),
+            apiRef: String(t.operatorRef || t.apiRef || (isDebit ? 'ADMIN_DEBIT' : '')),
+            message: String(t.message || (isDebit ? 'Admin पॅनेलमधून रक्कम वजा करण्यात आली (Debited by Admin)' : 'रिचार्ज यशस्वी')),
+            createdAt: txnDate,
           });
           dirty = true;
         }
@@ -224,7 +282,11 @@ app.post('/api/client-sync', (req, res) => {
   if (user) {
     recalculateUserLedger(user);
   }
-  if (dirty) save();
+  if (dirty) {
+    db().addMoneyRequests.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    db().transactions.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    save();
+  }
 
   const s = db().settings;
   const userTxns = user
@@ -412,10 +474,13 @@ app.post('/api/payment/create-order', async (req, res) => {
 
   let gatewayPaymentUrl = '';
 
+  const createOrderUrl = pg.createOrderUrl || (pg.provider === 'UPIGateway' || pg.provider === 'EkQR' ? 'https://api.ekqr.in/api/create_order' : '');
+  const checkStatusUrl = pg.checkStatusUrl || (pg.provider === 'UPIGateway' || pg.provider === 'EkQR' ? 'https://api.ekqr.in/api/check_order_status' : '');
+
   // If Live Payment Gateway is configured (e.g., UPIGateway / EkQR / IMB)
-  if (pg.mode === 'live' && pg.merchantKey && pg.createOrderUrl) {
+  if (pg.mode === 'live' && pg.merchantKey && createOrderUrl) {
     try {
-      const gwResp = await fetch(pg.createOrderUrl, {
+      const gwResp = await fetch(createOrderUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -537,14 +602,16 @@ app.post('/api/payment/verify-order', async (req, res) => {
   let verifiedSuccess = false;
   let bankUtr = '';
 
-  if (pg.mode === 'live' && pg.merchantKey && pg.checkStatusUrl) {
+  const checkStatusUrl = pg.checkStatusUrl || (pg.provider === 'UPIGateway' || pg.provider === 'EkQR' ? 'https://api.ekqr.in/api/check_order_status' : '');
+
+  if (pg.mode === 'live' && pg.merchantKey && checkStatusUrl) {
     // Live Gateway Server-to-Server Status Check
     try {
       const today = new Date();
       const dd = String(today.getDate()).padStart(2, '0');
       const mm = String(today.getMonth() + 1).padStart(2, '0');
       const yyyy = today.getFullYear();
-      const gwResp = await fetch(pg.checkStatusUrl, {
+      const gwResp = await fetch(checkStatusUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -960,24 +1027,57 @@ app.post('/api/admin/users/:id/action', requireAdmin, (req, res) => {
   const { action, amount } = req.body;
   if (action === 'toggleBlock') {
     user.blocked = !user.blocked;
+    save();
+    return res.json({ success: true, message: user.blocked ? 'ग्राहक ब्लॉक केला.' : 'ग्राहक अनब्लॉक केला.', user });
   } else if (action === 'credit') {
     const amt = Number(amount) || 0;
-    if (amt > 0) {
-      user.walletBalance = Number((user.walletBalance + amt).toFixed(2));
-      db().addMoneyRequests.unshift({
-        id: newId('ADM'),
-        userId: user.id,
-        userPhone: user.phone,
-        userName: user.name,
-        amount: amt,
-        utrNumber: 'Admin कडून वॉलेटमध्ये जमा',
-        status: 'approved',
-        createdAt: new Date().toISOString(),
-      });
+    if (amt <= 0) {
+      return res.status(400).json({ error: 'कृपया ० पेक्षा जास्त रक्कम टाका.' });
     }
+    db().addMoneyRequests.unshift({
+      id: newId('ADM'),
+      userId: user.id,
+      userPhone: user.phone,
+      userName: user.name,
+      amount: amt,
+      utrNumber: 'Admin कडून वॉलेटमध्ये जमा',
+      status: 'approved',
+      createdAt: new Date().toISOString(),
+    });
+    recalculateUserLedger(user);
+    save();
+    return res.json({ success: true, message: `₹${amt} यशस्वीरीत्या जमा झाले!`, user });
   } else if (action === 'debit') {
     const amt = Number(amount) || 0;
-    user.walletBalance = Number(Math.max(0, user.walletBalance - amt).toFixed(2));
+    if (amt <= 0) {
+      return res.status(400).json({ error: 'कृपया ० पेक्षा जास्त रक्कम टाका.' });
+    }
+    if (amt > user.walletBalance) {
+      return res.status(400).json({ error: `ग्राहकाच्या खात्यात फक्त ₹${user.walletBalance} शिल्लक आहेत, त्यापेक्षा जास्त रक्कम वजा करता येणार नाही.` });
+    }
+    user.manualDebit = Number(((user.manualDebit || 0) + amt).toFixed(2));
+    db().transactions.unshift({
+      id: newId('DR'),
+      userId: user.id,
+      userPhone: user.phone,
+      userName: user.name,
+      service: 'debit',
+      operatorCode: 'ADMIN_DEBIT',
+      operatorName: 'Admin वजावट',
+      number: user.phone,
+      customerName: user.name,
+      amount: amt,
+      cashback: 0,
+      adminProfit: 0,
+      status: 'success',
+      refunded: false,
+      apiRef: 'ADMIN_DEBIT',
+      message: 'Admin पॅनेलमधून रक्कम वजा करण्यात आली (Debited by Admin)',
+      createdAt: new Date().toISOString(),
+    });
+    recalculateUserLedger(user);
+    save();
+    return res.json({ success: true, message: `₹${amt} यशस्वीरीत्या वजा झाले!`, user });
   }
   save();
   res.json({ success: true, user });
@@ -1035,30 +1135,58 @@ app.post('/api/admin/add-money/:id/action', requireAdmin, (req, res) => {
   res.json({ success: true, request: item });
 });
 
+// Full-State Backup & Auto-Restore Endpoint (Prevents data loss across Render container restarts)
+app.post('/api/admin/full-sync', requireAdmin, (req, res) => {
+  const changed = mergeDatabaseState(req.body);
+  const d = db();
+  for (const u of d.users || []) {
+    recalculateUserLedger(u);
+  }
+  save();
+  res.json({
+    success: true,
+    merged: changed,
+    usersCount: (d.users || []).length,
+    transactionsCount: (d.transactions || []).length,
+    addMoneyCount: (d.addMoneyRequests || []).length,
+    users: d.users,
+    transactions: d.transactions,
+    addMoneyRequests: d.addMoneyRequests,
+    commissions: d.commissions,
+    settings: d.settings,
+  });
+});
+
 // ======================== 2-WAY CLOUD BRIDGE (LOCAL <-> RENDER.COM) ========================
 const RENDER_CLOUD_URL = 'https://aplarecharge-server.onrender.com';
 let renderAdminTokenCache = null;
 
+async function ensureRenderAdminToken() {
+  if (renderAdminTokenCache) return renderAdminTokenCache;
+  try {
+    const loginResp = await fetch(`${RENDER_CLOUD_URL}/api/admin/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'admin', password: 'admin123' }),
+    });
+    if (loginResp.ok) {
+      const loginData = await loginResp.json();
+      renderAdminTokenCache = loginData.token;
+    }
+  } catch (_) {}
+  return renderAdminTokenCache;
+}
+
 async function pushSettingsToRenderCloud(settingsPayload) {
   if (process.env.RENDER) return;
   try {
-    if (!renderAdminTokenCache) {
-      const loginResp = await fetch(`${RENDER_CLOUD_URL}/api/admin/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: 'admin', password: 'admin123' }),
-      });
-      if (loginResp.ok) {
-        const loginData = await loginResp.json();
-        renderAdminTokenCache = loginData.token;
-      }
-    }
-    if (renderAdminTokenCache) {
+    const token = await ensureRenderAdminToken();
+    if (token) {
       const resp = await fetch(`${RENDER_CLOUD_URL}/api/admin/settings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${renderAdminTokenCache}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(settingsPayload),
       });
@@ -1074,12 +1202,42 @@ async function syncLocalWithRenderCloud() {
   if (process.env.RENDER) return;
   try {
     const d = db();
-    pushSettingsToRenderCloud({ services: d.settings.services, mode: d.settings.mode });
-    const usersToSync = d.users.length
-      ? d.users
-      : [{ phone: '9876543210', name: 'ग्राहक (Demo User)' }];
+    const token = await ensureRenderAdminToken();
 
-    for (const u of usersToSync) {
+    // 1. Try Full-State Sync first if supported on Render
+    if (token) {
+      try {
+        const fullResp = await fetch(`${RENDER_CLOUD_URL}/api/admin/full-sync`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            users: d.users,
+            transactions: d.transactions,
+            addMoneyRequests: d.addMoneyRequests,
+            paymentOrders: d.paymentOrders,
+            commissions: d.commissions,
+            settings: d.settings,
+            apiWalletBalance: d.apiWalletBalance,
+          }),
+        });
+        if (fullResp.ok) {
+          const fullCloud = await fullResp.json();
+          if (mergeDatabaseState(fullCloud)) {
+            for (const u of d.users || []) recalculateUserLedger(u);
+            save();
+          }
+          return;
+        }
+      } catch (_) {}
+    }
+
+    // 2. Fallback: Sync settings, users, addMoney & transactions via /api/client-sync
+    pushSettingsToRenderCloud({ services: d.settings.services, mode: d.settings.mode, notice: d.settings.notice, upiId: d.settings.upiId, upiName: d.settings.upiName });
+
+    for (const u of d.users || []) {
       const myAdd = (d.addMoneyRequests || [])
         .filter((r) => r.userPhone === u.phone)
         .map((r) => ({
@@ -1136,9 +1294,6 @@ async function syncLocalWithRenderCloud() {
         for (const cr of cloudData.addMoneyRequests) {
           if (!d.addMoneyRequests.find((x) => x.id === cr.id)) {
             d.addMoneyRequests.unshift(cr);
-            if (localUser && cr.status === 'approved') {
-              localUser.walletBalance = Number((localUser.walletBalance + Number(cr.amount || 0)).toFixed(2));
-            }
             dirty = true;
           }
         }

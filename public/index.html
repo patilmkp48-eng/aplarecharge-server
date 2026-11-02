@@ -56,11 +56,16 @@
         </div>
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2">
         <span id="liveSyncBadge" class="px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold flex items-center gap-1.5">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-          🟢 LIVE Auto-Sync चालू
+          🟢 LIVE Auto-Sync & Vault चालू
         </span>
+        <button onclick="downloadBackupFile()" title="सर्व डेटाची बॅकअप फाईल डाउनलोड करा" class="px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/40 text-indigo-300 text-xs font-semibold">💾 बॅकअप डाउनलोड</button>
+        <label title="बॅकअप फाईल अपलोड करून डेटा रिस्टोअर करा" class="px-3 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/40 text-amber-300 text-xs font-semibold cursor-pointer">
+          📂 रिस्टोअर
+          <input type="file" accept=".json" onchange="uploadBackupFile(event)" class="hidden" />
+        </label>
         <button onclick="loadOverview(false)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold">🔄 रिफ्रेश करा</button>
         <button onclick="logoutAdmin()" class="px-3 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 text-xs font-semibold">बाहेर पडा</button>
       </div>
@@ -589,10 +594,130 @@
       toastTimer = setTimeout(() => el.classList.add('hidden'), 6000);
     }
 
+    const VAULT_KEY = 'apla_admin_db_vault_v1';
+    let isRestoringVault = false;
+
+    function getBrowserVault() {
+      try {
+        const raw = localStorage.getItem(VAULT_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function updateBrowserVault(serverState) {
+      if (!serverState) return;
+      try {
+        const existing = getBrowserVault() || { users: [], transactions: [], addMoneyRequests: [], commissions: {}, settings: {} };
+        const userMap = new Map();
+        for (const u of (existing.users || [])) if (u && u.phone) userMap.set(u.phone, u);
+        for (const u of (serverState.users || [])) if (u && u.phone) userMap.set(u.phone, u);
+
+        const txnMap = new Map();
+        for (const t of (existing.transactions || [])) if (t && t.id) txnMap.set(t.id, t);
+        for (const t of (serverState.transactions || [])) if (t && t.id) txnMap.set(t.id, t);
+
+        const addMap = new Map();
+        for (const r of (existing.addMoneyRequests || [])) if (r && r.id) addMap.set(r.id, r);
+        for (const r of (serverState.addMoneyRequests || [])) if (r && r.id) addMap.set(r.id, r);
+
+        const merged = {
+          updatedAt: new Date().toISOString(),
+          users: Array.from(userMap.values()),
+          transactions: Array.from(txnMap.values()).sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''))),
+          addMoneyRequests: Array.from(addMap.values()).sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''))),
+          commissions: serverState.commissions || existing.commissions || {},
+          settings: serverState.settings || existing.settings || {},
+        };
+        localStorage.setItem(VAULT_KEY, JSON.stringify(merged));
+      } catch (_) {}
+    }
+
+    async function autoRestoreFromVaultIfNeeded(serverState) {
+      if (isRestoringVault) return false;
+      const vault = getBrowserVault();
+      if (!vault) return false;
+      const serverUserPhones = new Set((serverState.users || []).map(u => u.phone));
+      const serverTxnIds = new Set((serverState.transactions || []).map(t => t.id));
+      const serverAddIds = new Set((serverState.addMoneyRequests || []).map(r => r.id));
+
+      const missingUsers = (vault.users || []).filter(u => u.phone && !serverUserPhones.has(u.phone));
+      const missingTxns = (vault.transactions || []).filter(t => t.id && !serverTxnIds.has(t.id));
+      const missingAdds = (vault.addMoneyRequests || []).filter(r => r.id && !serverAddIds.has(r.id));
+
+      if (!missingUsers.length && !missingTxns.length && !missingAdds.length) return false;
+
+      isRestoringVault = true;
+      try {
+        // Try full-sync endpoint first
+        try {
+          await apiCall('/api/admin/full-sync', 'POST', vault);
+          showLiveToast('✅ क्लाउड सर्व्हरवर तुमचा सुरक्षित डेटा ऑटो-रिस्टोअर झाला!');
+          isRestoringVault = false;
+          return true;
+        } catch (_) {}
+
+        // Fallback to /api/client-sync per user if server is running older version
+        for (const u of (vault.users || [])) {
+          const myAdds = (vault.addMoneyRequests || []).filter(r => r.userPhone === u.phone).map(r => ({
+            id: r.id, userPhone: r.userPhone, userName: r.userName, amount: r.amount, utr: r.utrNumber || r.utr, status: r.status, createdAt: r.createdAt
+          }));
+          const myTxns = (vault.transactions || []).filter(t => t.userPhone === u.phone).map(t => ({
+            id: t.id, userPhone: t.userPhone, userName: t.userName, category: t.service || t.category, operatorCode: t.operatorCode, operatorName: t.operatorName, number: t.number, amount: t.amount, cashback: t.cashback, adminProfit: t.adminProfit, status: t.status, operatorRef: t.apiRef, message: t.message, createdAt: t.createdAt
+          }));
+          await fetch('/api/client-sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: u.phone, name: u.name, clientAddMoney: myAdds, clientTransactions: myTxns }),
+          });
+        }
+        showLiveToast('✅ क्लाउड सर्व्हरवर तुमचा सुरक्षित डेटा ऑटो-रिस्टोअर झाला!');
+        isRestoringVault = false;
+        return true;
+      } catch (_) {
+        isRestoringVault = false;
+        return false;
+      }
+    }
+
+    function downloadBackupFile() {
+      const dataToExport = getBrowserVault() || state || {};
+      const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `aplarecharge_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showLiveToast('💾 बॅकअप फाईल यशस्वीरीत्या डाउनलोड झाली!');
+    }
+
+    async function uploadBackupFile(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        localStorage.setItem(VAULT_KEY, JSON.stringify(parsed));
+        await autoRestoreFromVaultIfNeeded({ users: [], transactions: [], addMoneyRequests: [] });
+        await loadOverview(false);
+        showLiveToast('📂 बॅकअप फाईलमधून सर्व डेटा यशस्वीरीत्या रिस्टोअर झाला!');
+      } catch (e) {
+        alert('बॅकअप फाईल वाचताना त्रुटी: ' + e.message);
+      }
+      event.target.value = '';
+    }
+
     async function loadOverview(isSilentPoll = false) {
       if (!adminToken) return;
       try {
-        const nextState = await apiCall('/api/admin/overview');
+        let nextState = await apiCall('/api/admin/overview');
+        const restored = await autoRestoreFromVaultIfNeeded(nextState);
+        if (restored) {
+          nextState = await apiCall('/api/admin/overview');
+        }
+        updateBrowserVault(nextState);
         // Detect new wallet topup or recharge from mobile app
         if (state && isSilentPoll) {
           const topAdd = nextState.addMoneyRequests && nextState.addMoneyRequests[0];
@@ -854,11 +979,15 @@
       const totalAddedAmt = approvedAdds.reduce((s, r) => s + Number(r.amount || 0), 0);
 
       const userTxns = filterByDate((transactions || []).filter(t => t.userPhone === u.phone || t.userId === u.id), 'ud');
-      const successTxns = userTxns.filter(t => t.status === 'success');
+      const rechargeTxns = userTxns.filter(t => t.service !== 'debit' && t.operatorCode !== 'ADMIN_DEBIT');
+      const successTxns = rechargeTxns.filter(t => t.status === 'success');
       const totalSpentAmt = successTxns.reduce((s, t) => s + Number(t.amount || 0), 0);
       const totalCashbackAmt = successTxns.reduce((s, t) => s + Number(t.cashback || 0), 0);
       const totalProfitAmt = successTxns.reduce((s, t) => s + Number(t.adminProfit || 0), 0);
-      updateDateFilterSummary('ud', `💳 जमा: <b class="text-emerald-300">${approvedAdds.length} वेळा (₹${totalAddedAmt.toFixed(2)})</b> &nbsp;|&nbsp; ⚡ रिचार्ज: <b class="text-sky-300">${userTxns.length} व्यवहार (यशस्वी ₹${totalSpentAmt.toFixed(2)})</b>`);
+      const debitTxns = userTxns.filter(t => t.service === 'debit' || t.operatorCode === 'ADMIN_DEBIT');
+      const totalDebitedAmt = debitTxns.reduce((s, t) => s + Number(t.amount || 0), 0);
+
+      updateDateFilterSummary('ud', `💳 जमा: <b class="text-emerald-300">${approvedAdds.length} वेळा (₹${totalAddedAmt.toFixed(2)})</b> &nbsp;|&nbsp; ⚡ रिचार्ज: <b class="text-sky-300">${rechargeTxns.length} व्यवहार (यशस्वी ₹${totalSpentAmt.toFixed(2)})</b>${totalDebitedAmt > 0 ? ` &nbsp;|&nbsp; 🔻 वजा: <b class="text-amber-300">₹${totalDebitedAmt.toFixed(2)}</b>` : ''}`);
 
       document.getElementById('ud_title').textContent = `${u.name} — स्वतंत्र खातेवही (Passbook)`;
       document.getElementById('ud_subtitle').textContent = `📱 मोबाईल नंबर: ${u.phone}  |  🆔 Customer ID: ${u.id}`;
@@ -892,24 +1021,29 @@
         </tr>
       `).join('') : `<tr><td colspan="4" class="py-4 text-center text-slate-500">या कालावधीत (${rangeLabel('ud')}) ग्राहकाने कोणतेही पैसे वॉलेटमध्ये ॲड केलेले नाहीत</td></tr>`;
 
-      document.getElementById('ud_txnBody').innerHTML = userTxns.length ? userTxns.map(t => `
+      document.getElementById('ud_txnBody').innerHTML = userTxns.length ? userTxns.map(t => {
+        const isDebit = t.service === 'debit' || t.operatorCode === 'ADMIN_DEBIT';
+        return `
         <tr>
           <td class="py-2">
             <div class="font-mono text-[11px] text-slate-300">${t.id}</div>
             <div class="text-[10px] text-slate-400">${new Date(t.createdAt).toLocaleString('mr-IN')}</div>
           </td>
           <td class="py-2">
-            <div class="font-bold text-indigo-300">${t.operatorName}</div>
-            <div class="font-mono text-slate-300 text-[11px]">${t.number}</div>
+            <div class="font-bold ${isDebit ? 'text-amber-400' : 'text-indigo-300'}">${t.operatorName}</div>
+            <div class="font-mono text-slate-300 text-[11px]">${t.message || t.number}</div>
           </td>
-          <td class="py-2 font-extrabold text-white">₹${t.amount}</td>
+          <td class="py-2 font-extrabold ${isDebit ? 'text-amber-400' : 'text-white'}">${isDebit ? '- ' : ''}₹${t.amount}</td>
           <td class="py-2">
+            ${isDebit ? '<span class="text-xs text-amber-300">Admin वजावट</span>' : `
             <div class="text-emerald-400">नफा: ₹${t.adminProfit || 0}</div>
             <div class="text-[11px] text-amber-300">कॅशबॅक: ₹${t.cashback || 0}</div>
+            `}
           </td>
-          <td class="py-2">${statusBadge(t.status)}</td>
+          <td class="py-2">${isDebit ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300">Debited</span>' : statusBadge(t.status)}</td>
         </tr>
-      `).join('') : `<tr><td colspan="5" class="py-4 text-center text-slate-500">या कालावधीत (${rangeLabel('ud')}) ग्राहकाने कोणताही रिचार्ज केलेला नाही</td></tr>`;
+      `;
+      }).join('') : `<tr><td colspan="5" class="py-4 text-center text-slate-500">या कालावधीत (${rangeLabel('ud')}) कोणताही व्यवहार झालेला नाही</td></tr>`;
     }
 
     function renderDashboard(isSilentPoll = false) {
@@ -991,8 +1125,15 @@
         return `
         <tr>
           <td class="py-2.5">
-            <div class="font-bold text-white">${u.name}</div>
-            <div class="text-[10px] text-slate-400 font-mono">${u.id}</div>
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-amber-300 text-sm flex-shrink-0">
+                ${(u.avatar && u.avatar.startsWith('preset:')) ? u.avatar.replace('preset:', '') : (u.name ? u.name.charAt(0).toUpperCase() : 'U')}
+              </div>
+              <div>
+                <div class="font-bold text-white">${u.name}</div>
+                <div class="text-[10px] text-slate-400 font-mono">${u.id}</div>
+              </div>
+            </div>
           </td>
           <td class="py-2.5 font-mono text-indigo-300 font-bold">${u.phone}</td>
           <td class="py-2.5 font-extrabold text-emerald-400 text-sm">₹${Number(u.walletBalance || 0).toFixed(2)}</td>
@@ -1104,10 +1245,25 @@
     }
 
     async function walletAdjust(userId, action) {
-      const amt = prompt(action === 'credit' ? 'ग्राहकाच्या वॉलेटमध्ये किती रुपये जमा करायचे?' : 'किती रुपये वजा करायचे?');
-      if (!amt || isNaN(amt)) return;
-      await apiCall(`/api/admin/users/${userId}/action`, 'POST', { action, amount: Number(amt) });
-      loadOverview();
+      const isCredit = action === 'credit';
+      const amtStr = prompt(isCredit ? 'ग्राहकाच्या वॉलेटमध्ये किती रुपये जमा करायचे?' : 'ग्राहकाच्या वॉलेटमधून किती रुपये वजा करायचे?');
+      if (!amtStr) return;
+      const amt = Number(amtStr.trim());
+      if (isNaN(amt) || amt <= 0) {
+        alert('कृपया योग्य रक्कम टाका.');
+        return;
+      }
+      try {
+        const res = await apiCall(`/api/admin/users/${userId}/action`, 'POST', { action, amount: amt });
+        if (res && res.error) {
+          alert('❌ ' + res.error);
+        } else {
+          alert('✅ ' + (res.message || (isCredit ? 'पैसे यशस्वीरीत्या जमा झाले!' : 'पैसे यशस्वीरीत्या वजा झाले!')));
+        }
+        await loadOverview();
+      } catch (e) {
+        alert('त्रुटी: ' + (e.message || e));
+      }
     }
 
     async function toggleBlockUser(userId) {
