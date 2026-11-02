@@ -1,0 +1,1047 @@
+{
+  "settings": {
+    "appName": "AplaRecharge",
+    "admin": {
+      "username": "admin",
+      "passwordHash": "a51c365db4d8c7b40a6ad2b16287cb91:6253331a2d490653f2638934932e35f56649e3eac85e338daa18cbca8a23384e5a240e557c35f71bba622eb836b50e305f8441b8cef2ead08915f125df66ea44",
+      "mustChangePassword": true
+    },
+    "mode": "demo",
+    "demoOtp": "123456",
+    "services": {
+      "mobile": true,
+      "postpaid": true,
+      "broadband": true,
+      "dth": true,
+      "electricity": true,
+      "fastag": true
+    },
+    "api": {
+      "providerName": "",
+      "rechargeUrl": "",
+      "apiKey": "",
+      "successKeyword": "success",
+      "pendingKeyword": "pending"
+    },
+    "upiId": "",
+    "upiName": "AplaRecharge",
+    "minAddMoney": 10,
+    "paymentGateway": {
+      "provider": "UPIGateway",
+      "mode": "sandbox",
+      "merchantKey": "",
+      "createOrderUrl": "https://api.ekqr.in/api/create_order",
+      "checkStatusUrl": "https://api.ekqr.in/api/check_order_status"
+    },
+    "planApi": {
+      "mode": "smart",
+      "providerName": "Mplan / KwikAPI / PlanAPI",
+      "apiKey": "",
+      "rOfferUrl": "https://api.mplan.in/api/Plans.php?apikey={apikey}&offer=roffer&tel={number}&operator={operator}",
+      "regularPlansUrl": "https://api.mplan.in/api/Plans.php?apikey={apikey}&cricle=Maharashtra&operator={operator}"
+    },
+    "notice": "AplaRecharge मध्ये आपले स्वागत आहे! प्रत्येक रिचार्जवर कॅशबॅक मिळवा. ",
+    "banners": []
+  },
+  "commissions": {
+    "JIO": {
+      "apiCommission": 4,
+      "userCashback": 1,
+      "apiCode": "JIO",
+      "enabled": true
+    },
+    "AIRTEL": {
+      "apiCommission": 3,
+      "userCashback": 1,
+      "apiCode": "AIRTEL",
+      "enabled": true
+    },
+    "VI": {
+      "apiCommission": 3,
+      "userCashback": 1,
+      "apiCode": "VI",
+      "enabled": true
+    },
+    "BSNL": {
+      "apiCommission": 3,
+      "userCashback": 1,
+      "apiCode": "BSNL",
+      "enabled": true
+    },
+    "JIOPOSTPAID": {
+      "apiCommission": 1.2,
+      "userCashback": 0.5,
+      "apiCode": "JIOPOSTPAID",
+      "enabled": true
+    },
+    "AIRTELPOSTPAID": {
+      "apiCommission": 1.2,
+      "userCashback": 0.5,
+      "apiCode": "AIRTELPOSTPAID",
+      "enabled": true
+    },
+    "VIPOSTPAID": {
+      "apiCommission": 1.2,
+      "userCashback": 0.5,
+      "apiCode": "VIPOSTPAID",
+      "enabled": true
+    },
+    "BSNLPOSTPAID": {
+      "apiCommission": 1.2,
+      "userCashback": 0.5,
+      "apiCode": "BSNLPOSTPAID",
+      "enabled": true
+    },
+    "JIOFIBER": {
+      "apiCommission": 1.5,
+      "userCashback": 0.5,
+      "apiCode": "JIOFIBER",
+      "enabled": true
+    },
+    "AIRTELFIBER": {
+      "apiCommission": 1.5,
+      "userCashback": 0.5,
+      "apiCode": "AIRTELFIBER",
+      "enabled": true
+    },
+    "BSNLFIBER": {
+      "apiCommission": 1.5,
+      "userCashback": 0.5,
+      "apiCode": "BSNLFIBER",
+      "enabled": true
+    },
+    "ACTFIBER": {
+      "apiCommission": 1.5,
+      "userCashback": 0.5,
+      "apiCode": "ACTFIBER",
+      "enabled": true
+    },
+    "TATAPLAYFIBER": {
+      "apiCommission": 1.5,
+      "userCashback": 0.5,
+      "apiCode": "TATAPLAYFIBER",
+      "enabled": true
+    },
+    "HATHWAY": {
+      "apiCommission": 1.5,
+      "userCashback": 0.5,
+      "apiCode": "HATHWAY",
+      "enabled": true
+    },
+    "TATAPLAY": {
+      "apiCommission": 3.5,
+      "userCashback": 1.5,
+      "apiCode": "TATAPLAY",
+      "enabled": true
+    },
+    "AIRTELDTH": {
+      "apiCommission": 3.5,
+      "userCashback": 1.5,
+      "apiCode": "AIRTELDTH",
+      "enabled": true
+    },
+    "DISHTV": {
+      "apiCommission": 3.5,
+      "userCashback": 1.5,
+      "apiCode": "DISHTV",
+      "enabled": true
+    },
+    "D2H": {
+      "apiCommission": 3.5,
+      "userCashback": 1.5,
+      "apiCode": "D2H",
+      "enabled": true
+    },
+    "SUNDIRECT": {
+      "apiCommission": 3.5,
+      "userCashback": 1.5,
+      "apiCode": "SUNDIRECT",
+      "enabled": true
+    },
+    "MSEDCL": {
+      "apiCommission": 0.5,
+      "userCashback": 0,
+      "apiCode": "MSEDCL",
+      "enabled": true
+    },
+    "ADANIMUM": {
+      "apiCommission": 0.5,
+      "userCashback": 0,
+      "apiCode": "ADANIMUM",
+      "enabled": true
+    },
+    "TATAPOWERMUM": {
+      "apiCommission": 0.5,
+      "userCashback": 0,
+      "apiCode": "TATAPOWERMUM",
+      "enabled": true
+    },
+    "BEST": {
+      "apiCommission": 0.5,
+      "userCashback": 0,
+      "apiCode": "BEST",
+      "enabled": true
+    },
+    "TORRENTPOWER": {
+      "apiCommission": 0.5,
+      "userCashback": 0,
+      "apiCode": "TORRENTPOWER",
+      "enabled": true
+    },
+    "ICICIFASTAG": {
+      "apiCommission": 0.8,
+      "userCashback": 0.3,
+      "apiCode": "ICICIFASTAG",
+      "enabled": true
+    },
+    "SBIFASTAG": {
+      "apiCommission": 0.8,
+      "userCashback": 0.3,
+      "apiCode": "SBIFASTAG",
+      "enabled": true
+    },
+    "HDFCFASTAG": {
+      "apiCommission": 0.8,
+      "userCashback": 0.3,
+      "apiCode": "HDFCFASTAG",
+      "enabled": true
+    },
+    "AXISFASTAG": {
+      "apiCommission": 0.8,
+      "userCashback": 0.3,
+      "apiCode": "AXISFASTAG",
+      "enabled": true
+    },
+    "KOTAKFASTAG": {
+      "apiCommission": 0.8,
+      "userCashback": 0.3,
+      "apiCode": "KOTAKFASTAG",
+      "enabled": true
+    },
+    "AIRTELFASTAG": {
+      "apiCommission": 0.8,
+      "userCashback": 0.3,
+      "apiCode": "AIRTELFASTAG",
+      "enabled": true
+    },
+    "IDFCFASTAG": {
+      "apiCommission": 0.8,
+      "userCashback": 0.3,
+      "apiCode": "IDFCFASTAG",
+      "enabled": true
+    },
+    "BOBFASTAG": {
+      "apiCommission": 0.8,
+      "userCashback": 0.3,
+      "apiCode": "BOBFASTAG",
+      "enabled": true
+    }
+  },
+  "users": [
+    {
+      "id": "USR_9890584546",
+      "phone": "9890584546",
+      "name": "mkpoi",
+      "walletBalance": 780,
+      "totalCashback": 0,
+      "blocked": false,
+      "createdAt": "2026-10-30T01:22:20.686Z",
+      "manualDebit": 220,
+      "avatar": ""
+    },
+    {
+      "id": "USR_8446234037",
+      "phone": "8446234037",
+      "name": "mkp",
+      "walletBalance": 6000,
+      "totalCashback": 0,
+      "blocked": false,
+      "createdAt": "2026-10-30T01:20:10.955Z",
+      "manualDebit": 50
+    },
+    {
+      "id": "USR_8446254037",
+      "phone": "8446254037",
+      "name": "mkpp",
+      "walletBalance": 7947.92,
+      "totalCashback": 50.05,
+      "blocked": false,
+      "createdAt": "2026-10-29T11:29:07.149Z",
+      "avatar": "",
+      "manualDebit": 0
+    },
+    {
+      "id": "USR_9876543210",
+      "phone": "9876543210",
+      "name": "ग्राहक 3210",
+      "walletBalance": 1100,
+      "totalCashback": 0,
+      "blocked": false,
+      "createdAt": "2026-10-27T03:41:25.595Z",
+      "avatar": "preset:??",
+      "manualDebit": 0
+    }
+  ],
+  "sessions": {},
+  "adminSessions": {
+    "7b10211416f7028f50f42cb75d49e18e277626778bdfce16a529ba6b5781b589": {
+      "username": "admin",
+      "loginAt": "2026-10-27T02:17:48.856Z"
+    },
+    "ad60510e974aa329f75e30500d64602229214b0a8c08b1b67255b3f14d323713": {
+      "username": "admin",
+      "loginAt": "2026-10-27T06:33:12.110Z"
+    },
+    "b62c255f1fe766a03a6bcd0f8aade18d5622bca0023c7f98d472be5780f5181f": {
+      "username": "admin",
+      "loginAt": "2026-10-27T13:26:39.504Z"
+    },
+    "cd50785e7b8ba06f17418834648dd4d43963ac59eddf1f813a9261bd625d4994": {
+      "username": "admin",
+      "loginAt": "2026-10-28T14:17:57.746Z"
+    },
+    "e85300d95fd6a4d9dd8808bf8eb102857408bc5df0ed548b4026e2286d3cba87": {
+      "username": "admin",
+      "loginAt": "2026-10-28T14:34:35.715Z"
+    },
+    "c2ad99603e827177e3bed1d44ca44fcaf5aad87615e4955cc89cb79c3f7774c3": {
+      "username": "admin",
+      "loginAt": "2026-10-28T16:20:31.725Z"
+    },
+    "d54ebc593c8b6b98193f000f1f46dae87bc6f313131f3625b5169a4c4a91dbe3": {
+      "username": "admin",
+      "loginAt": "2026-10-28T16:27:44.033Z"
+    },
+    "e2759b73887b96bef7356288337a0570f53d4373c28f14f3c3ad0f877daa65a6": {
+      "username": "admin",
+      "loginAt": "2026-10-30T01:20:27.191Z"
+    },
+    "0d14effe5010fc98063cd1c6c906c11b2d6072752cb72f71e26195bc1d89d44c": {
+      "username": "admin",
+      "loginAt": "2026-10-30T01:33:53.402Z"
+    }
+  },
+  "otps": {},
+  "transactions": [
+    {
+      "id": "DR17933272020069600",
+      "userId": "USR_9890584546",
+      "userPhone": "9890584546",
+      "userName": "mkpoi",
+      "service": "debit",
+      "operatorCode": "ADMIN_DEBIT",
+      "operatorName": "Admin वजावट",
+      "number": "9890584546",
+      "customerName": "mkpoi",
+      "amount": 70,
+      "cashback": 0,
+      "adminProfit": 0,
+      "status": "success",
+      "refunded": false,
+      "apiRef": "ADMIN_DEBIT",
+      "message": "Admin पॅनेलमधून रक्कम वजा करण्यात आली (Debited by Admin)",
+      "createdAt": "2026-10-30T02:26:42.006Z"
+    },
+    {
+      "id": "DR17933234460418C9F",
+      "userId": "USR_9890584546",
+      "userPhone": "9890584546",
+      "userName": "mkpoi",
+      "service": "debit",
+      "operatorCode": "ADMIN_DEBIT",
+      "operatorName": "Admin वजावट",
+      "number": "9890584546",
+      "customerName": "mkpoi",
+      "amount": 100,
+      "cashback": 0,
+      "adminProfit": 0,
+      "status": "success",
+      "refunded": false,
+      "apiRef": "ADMIN_DEBIT",
+      "message": "Admin पॅनेलमधून रक्कम वजा करण्यात आली (Debited by Admin)",
+      "createdAt": "2026-10-30T01:24:06.041Z"
+    },
+    {
+      "id": "DR17933234070478C29",
+      "userId": "USR_9890584546",
+      "userPhone": "9890584546",
+      "userName": "mkpoi",
+      "service": "debit",
+      "operatorCode": "ADMIN_DEBIT",
+      "operatorName": "Admin वजावट",
+      "number": "9890584546",
+      "customerName": "mkpoi",
+      "amount": 50,
+      "cashback": 0,
+      "adminProfit": 0,
+      "status": "success",
+      "refunded": false,
+      "apiRef": "ADMIN_DEBIT",
+      "message": "Admin पॅनेलमधून रक्कम वजा करण्यात आली (Debited by Admin)",
+      "createdAt": "2026-10-30T01:23:27.047Z"
+    },
+    {
+      "id": "DR179332322724329CC",
+      "userId": "USR_8446234037",
+      "userPhone": "8446234037",
+      "userName": "mkp",
+      "service": "debit",
+      "operatorCode": "ADMIN_DEBIT",
+      "operatorName": "Admin वजावट",
+      "number": "8446234037",
+      "customerName": "mkp",
+      "amount": 50,
+      "cashback": 0,
+      "adminProfit": 0,
+      "status": "success",
+      "refunded": false,
+      "apiRef": "ADMIN_DEBIT",
+      "message": "Admin पॅनेलमधून रक्कम वजा करण्यात आली (Debited by Admin)",
+      "createdAt": "2026-10-30T01:20:27.243Z"
+    },
+    {
+      "id": "TXN1793323152227BE50",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "service": "mobile",
+      "operatorCode": "BSNL",
+      "operatorName": "BSNL",
+      "number": "9530564547",
+      "customerName": "",
+      "amount": 485,
+      "cashback": 4.85,
+      "adminProfit": 9.7,
+      "status": "success",
+      "apiRef": "DEMO1793323153428",
+      "message": "Demo रिचार्ज यशस्वी",
+      "createdAt": "2026-10-30T01:19:12.227Z"
+    },
+    {
+      "id": "TXN1793323151333B758",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "service": "mobile",
+      "operatorCode": "BSNL",
+      "operatorName": "BSNL",
+      "number": "9530564547",
+      "customerName": "",
+      "amount": 485,
+      "cashback": 4.85,
+      "adminProfit": 9.7,
+      "status": "success",
+      "apiRef": "DEMO1793323152552",
+      "message": "Demo रिचार्ज यशस्वी",
+      "createdAt": "2026-10-30T01:19:11.334Z"
+    },
+    {
+      "id": "TXN1793294116582007A",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "service": "postpaid",
+      "operatorCode": "JIOPOSTPAID",
+      "operatorName": "Jio Postpaid",
+      "number": "8586858685",
+      "customerName": "",
+      "amount": 499,
+      "cashback": 2.5,
+      "adminProfit": 3.49,
+      "status": "success",
+      "refunded": false,
+      "apiRef": "DEMO1793294117783",
+      "message": "Demo रिचार्ज यशस्वी",
+      "createdAt": "2026-10-30T00:47:34.896Z"
+    },
+    {
+      "id": "TXN1793293999105A452",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "service": "mobile",
+      "operatorCode": "VI",
+      "operatorName": "Vi (Vodafone Idea)",
+      "number": "9890584546",
+      "customerName": "",
+      "amount": 299,
+      "cashback": 2.99,
+      "adminProfit": 5.98,
+      "status": "success",
+      "refunded": false,
+      "apiRef": "DEMO1793294000306",
+      "message": "Demo रिचार्ज यशस्वी",
+      "createdAt": "2026-10-30T00:47:34.896Z"
+    },
+    {
+      "id": "TXN17932367957866EF3",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "service": "mobile",
+      "operatorCode": "JIO",
+      "operatorName": "Jio",
+      "number": "+918446234",
+      "customerName": "",
+      "amount": 299,
+      "cashback": 2.99,
+      "adminProfit": 5.98,
+      "status": "success",
+      "refunded": false,
+      "apiRef": "DEMO1793236796989",
+      "message": "Demo रिचार्ज यशस्वी",
+      "createdAt": "2026-10-29T11:29:07.150Z"
+    },
+    {
+      "id": "TXN17932085573687047",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "service": "postpaid",
+      "operatorCode": "JIOPOSTPAID",
+      "operatorName": "Jio Postpaid",
+      "number": "9890584542",
+      "customerName": "",
+      "amount": 599,
+      "cashback": 3,
+      "adminProfit": 4.19,
+      "status": "pending",
+      "apiRef": null,
+      "message": "प्रक्रियेत आहे...",
+      "createdAt": "2026-10-28T17:29:17.368Z"
+    },
+    {
+      "id": "TXN179315301787077FF",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "service": "mobile",
+      "operatorCode": "VI",
+      "operatorName": "Vi (Vodafone Idea)",
+      "number": "9890584546",
+      "customerName": "",
+      "amount": 150,
+      "cashback": 1.5,
+      "adminProfit": 3,
+      "status": "success",
+      "apiRef": "DEMO1793153019071",
+      "message": "Demo रिचार्ज यशस्वी",
+      "createdAt": "2026-10-28T02:03:37.870Z"
+    },
+    {
+      "id": "TXN17931528508063644",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "service": "dth",
+      "operatorCode": "D2H",
+      "operatorName": "Videocon d2h",
+      "number": "1020304050",
+      "customerName": "",
+      "amount": 100,
+      "cashback": 1.5,
+      "adminProfit": 2,
+      "status": "success",
+      "apiRef": "DEMO1793152852006",
+      "message": "Demo रिचार्ज यशस्वी",
+      "createdAt": "2026-10-28T02:00:50.806Z"
+    },
+    {
+      "id": "TXN1793152821637F279",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "service": "dth",
+      "operatorCode": "AIRTELDTH",
+      "operatorName": "Airtel Digital TV",
+      "number": "1020304050",
+      "customerName": "",
+      "amount": 360,
+      "cashback": 5.4,
+      "adminProfit": 7.2,
+      "status": "success",
+      "apiRef": "DEMO1793152822838",
+      "message": "Demo रिचार्ज यशस्वी",
+      "createdAt": "2026-10-28T02:00:21.637Z"
+    },
+    {
+      "id": "TXN1793152661116E8A9",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "service": "dth",
+      "operatorCode": "AIRTELDTH",
+      "operatorName": "Airtel Digital TV",
+      "number": "1020304050",
+      "customerName": "",
+      "amount": 360,
+      "cashback": 5.4,
+      "adminProfit": 7.2,
+      "status": "success",
+      "apiRef": "DEMO1793152662317",
+      "message": "Demo रिचार्ज यशस्वी",
+      "createdAt": "2026-10-28T01:57:41.116Z"
+    },
+    {
+      "id": "TXN1793152531862A448",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "service": "dth",
+      "operatorCode": "TATAPLAY",
+      "operatorName": "Tata Play",
+      "number": "1020304050",
+      "customerName": "",
+      "amount": 100,
+      "cashback": 1.5,
+      "adminProfit": 2,
+      "status": "success",
+      "apiRef": "DEMO1793152533062",
+      "message": "Demo रिचार्ज यशस्वी",
+      "createdAt": "2026-10-28T01:55:31.862Z"
+    },
+    {
+      "id": "TXN17931226125786202",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "service": "dth",
+      "operatorCode": "TATAPLAY",
+      "operatorName": "Tata Play",
+      "number": "989058454669",
+      "customerName": "",
+      "amount": 100,
+      "cashback": 1.5,
+      "adminProfit": 2,
+      "status": "success",
+      "apiRef": "DEMO1793122613778",
+      "message": "Demo रिचार्ज यशस्वी",
+      "createdAt": "2026-10-27T17:36:52.578Z"
+    },
+    {
+      "id": "TXN179312246753948E5",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "service": "dth",
+      "operatorCode": "TATAPLAY",
+      "operatorName": "Tata Play",
+      "number": "989058454669",
+      "customerName": "",
+      "amount": 325,
+      "cashback": 4.88,
+      "adminProfit": 6.5,
+      "status": "success",
+      "apiRef": "DEMO1793122468740",
+      "message": "Demo रिचार्ज यशस्वी",
+      "createdAt": "2026-10-27T17:34:27.539Z"
+    },
+    {
+      "id": "TXN7591546",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "service": "fastag",
+      "operatorCode": "ICICIFASTAG",
+      "operatorName": "ICICI Bank FASTag",
+      "number": "MH13BN9838",
+      "customerName": "",
+      "amount": 500,
+      "cashback": 1.5,
+      "adminProfit": 2.5,
+      "status": "success",
+      "refunded": false,
+      "apiRef": "ICICIFASTAG31577498",
+      "message": "रिचार्ज यशस्वी झाले! (Demo Mode)",
+      "createdAt": "2026-10-27T16:13:46.407Z"
+    },
+    {
+      "id": "TXN17931102749226C96",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "service": "electricity",
+      "operatorCode": "MSEDCL",
+      "operatorName": "महावितरण (MSEDCL)",
+      "number": "989058454612",
+      "customerName": "",
+      "amount": 3000,
+      "cashback": 0,
+      "adminProfit": 15,
+      "status": "success",
+      "apiRef": "DEMO1793110276124",
+      "message": "Demo रिचार्ज यशस्वी",
+      "createdAt": "2026-10-27T14:11:14.922Z"
+    },
+    {
+      "id": "TXN17931085801031875",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "service": "mobile",
+      "operatorCode": "AIRTEL",
+      "operatorName": "Airtel",
+      "number": "9822120806",
+      "customerName": "",
+      "amount": 329,
+      "cashback": 3.29,
+      "adminProfit": 6.58,
+      "status": "success",
+      "apiRef": "DEMO1793108581303",
+      "message": "Demo रिचार्ज यशस्वी",
+      "createdAt": "2026-10-27T13:43:00.103Z"
+    },
+    {
+      "id": "TXN1793108447254ED15",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "service": "dth",
+      "operatorCode": "TATAPLAY",
+      "operatorName": "Tata Play",
+      "number": "1014151325",
+      "customerName": "",
+      "amount": 360,
+      "cashback": 5.4,
+      "adminProfit": 7.2,
+      "status": "success",
+      "apiRef": null,
+      "message": "Admin कडून यशस्वी (Success) मार्क केले",
+      "createdAt": "2026-10-27T13:40:47.254Z"
+    }
+  ],
+  "addMoneyRequests": [
+    {
+      "id": "ORD1793413588750BBD5",
+      "userId": "USR_9890584546",
+      "userPhone": "9890584546",
+      "userName": "mkpoi",
+      "amount": 500,
+      "utrNumber": "PhonePe • UTR: 493413592966",
+      "status": "approved",
+      "createdAt": "2026-10-31T02:26:32.966Z"
+    },
+    {
+      "id": "ORD1793413506505A46D",
+      "userId": "USR_8446234037",
+      "userPhone": "8446234037",
+      "userName": "mkp",
+      "amount": 5000,
+      "utrNumber": "PhonePe • UTR: 493413510308",
+      "status": "approved",
+      "createdAt": "2026-10-31T02:25:10.308Z"
+    },
+    {
+      "id": "ORD17934134841361D27",
+      "userId": "USR_8446234037",
+      "userPhone": "8446234037",
+      "userName": "mkp",
+      "amount": 500,
+      "utrNumber": "PhonePe • UTR: 493413488326",
+      "status": "approved",
+      "createdAt": "2026-10-31T02:24:48.327Z"
+    },
+    {
+      "id": "ADM1793324033454282E",
+      "userId": "USR_8446234037",
+      "userPhone": "8446234037",
+      "userName": "mkp",
+      "amount": 50,
+      "utrNumber": "Admin कडून वॉलेटमध्ये जमा",
+      "status": "approved",
+      "createdAt": "2026-10-30T01:33:53.454Z"
+    },
+    {
+      "id": "ORD17932931690008810",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 500,
+      "utrNumber": "PhonePe • UTR: 493293173803",
+      "status": "approved",
+      "createdAt": "2026-10-30T00:47:34.896Z"
+    },
+    {
+      "id": "ADM1793275451946E2CF",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 200,
+      "utrNumber": "Admin कडून वॉलेटमध्ये जमा",
+      "status": "approved",
+      "createdAt": "2026-10-29T12:04:11.946Z"
+    },
+    {
+      "id": "ADM1793275442203D4C0",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 200,
+      "utrNumber": "Admin कडून वॉलेटमध्ये जमा",
+      "status": "approved",
+      "createdAt": "2026-10-29T12:04:02.203Z"
+    },
+    {
+      "id": "ADM17932754067058C2E",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 900,
+      "utrNumber": "Admin कडून वॉलेटमध्ये जमा",
+      "status": "approved",
+      "createdAt": "2026-10-29T12:03:26.705Z"
+    },
+    {
+      "id": "ORD17932748893106519",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 5000,
+      "utrNumber": "Paytm • UTR: 493274891246",
+      "status": "approved",
+      "createdAt": "2026-10-29T11:54:51.246Z"
+    },
+    {
+      "id": "ORD1793274813068783D",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 100,
+      "utrNumber": "PhonePe • UTR: 493274815047",
+      "status": "approved",
+      "createdAt": "2026-10-29T11:53:35.047Z"
+    },
+    {
+      "id": "ORD17932747207031B15",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 500,
+      "utrNumber": "Paytm • UTR: 493274729062",
+      "status": "approved",
+      "createdAt": "2026-10-29T11:52:09.063Z"
+    },
+    {
+      "id": "ORD1793273364548F7A4",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 500,
+      "utrNumber": "PhonePe • UTR: 493273366599",
+      "status": "approved",
+      "createdAt": "2026-10-29T11:29:26.599Z"
+    },
+    {
+      "id": "ORD1793232871248A791",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 500,
+      "utrNumber": "PhonePe • UTR: 493232874521",
+      "status": "approved",
+      "createdAt": "2026-10-29T11:29:07.149Z"
+    },
+    {
+      "id": "ORD17932085253363561",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 2000,
+      "utrNumber": "PhonePe • UTR: 493208530195",
+      "status": "approved",
+      "createdAt": "2026-10-28T17:28:50.195Z"
+    },
+    {
+      "id": "ORD179319788688946F0",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 100,
+      "utrNumber": "PhonePe • UTR: 493197890029",
+      "status": "approved",
+      "createdAt": "2026-10-28T14:31:30.029Z"
+    },
+    {
+      "id": "ADM1793197603246A204",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 47.87,
+      "utrNumber": "Admin कडून वॉलेटमध्ये जमा",
+      "status": "approved",
+      "createdAt": "2026-10-28T14:26:43.246Z"
+    },
+    {
+      "id": "ORD17931525892587B1C",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 1000,
+      "utrNumber": "PhonePe • UTR: 493152596736",
+      "status": "approved",
+      "createdAt": "2026-10-28T01:56:36.736Z"
+    },
+    {
+      "id": "ORD17931224215101DDF",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 500,
+      "utrNumber": "PhonePe • UTR: 493122426458",
+      "status": "approved",
+      "createdAt": "2026-10-27T17:33:46.458Z"
+    },
+    {
+      "id": "ORD1793108385316FB9C",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 500,
+      "utrNumber": "PhonePe • UTR: 493108393437",
+      "status": "approved",
+      "createdAt": "2026-10-27T13:39:53.437Z"
+    },
+    {
+      "id": "ORD1793108347722E864",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 2000,
+      "utrNumber": "PhonePe • UTR: 493108356333",
+      "status": "approved",
+      "createdAt": "2026-10-27T13:39:16.333Z"
+    },
+    {
+      "id": "ORD777888",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 200,
+      "utrNumber": "PhonePe . UTR: 412345678901",
+      "status": "approved",
+      "createdAt": "2026-10-27T13:10:40.078Z"
+    },
+    {
+      "id": "ORD999111",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 500,
+      "utrNumber": "PhonePe • UTR: 493105650113",
+      "status": "approved",
+      "createdAt": "2026-10-27T12:54:10.113Z"
+    },
+    {
+      "id": "ADD17930725209225B8B",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 500,
+      "utrNumber": "INSTANT-UPI",
+      "status": "approved",
+      "createdAt": "2026-10-27T03:42:00.922Z"
+    }
+  ],
+  "apiWalletBalance": 0,
+  "paymentOrders": [
+    {
+      "orderId": "ORD17932748893106519",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 5000,
+      "preferredApp": "Paytm",
+      "provider": "UPIGateway",
+      "mode": "sandbox",
+      "signature": "1c147cb262e6e7cd82096de1f585172940c7bf45c7109e338b76b8f881f0901c",
+      "upiIntentUrl": "upi://pay?pa=aplarecharge@ybl&pn=AplaRecharge&am=5000.00&tr=ORD17932748893106519&tn=Wallet_ORD17932748893106519&cu=INR",
+      "gatewayPaymentUrl": "",
+      "status": "SUCCESS",
+      "credited": true,
+      "bankUtr": "493274891246",
+      "createdAt": "2026-10-29T11:54:49.310Z"
+    },
+    {
+      "orderId": "ORD1793274813068783D",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 100,
+      "preferredApp": "PhonePe",
+      "provider": "UPIGateway",
+      "mode": "sandbox",
+      "signature": "ec223ced6f1510648581e863e715c84f68087487ea149b32e6e5170661f2ba26",
+      "upiIntentUrl": "upi://pay?pa=aplarecharge@ybl&pn=AplaRecharge&am=100.00&tr=ORD1793274813068783D&tn=Wallet_ORD1793274813068783D&cu=INR",
+      "gatewayPaymentUrl": "",
+      "status": "SUCCESS",
+      "credited": true,
+      "bankUtr": "493274815047",
+      "createdAt": "2026-10-29T11:53:33.069Z"
+    },
+    {
+      "orderId": "ORD17932747207031B15",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 500,
+      "preferredApp": "Paytm",
+      "provider": "UPIGateway",
+      "mode": "sandbox",
+      "signature": "4ff962b97c437275ddccf821f433edca5360cff268f4e8927feee0046a5e532b",
+      "upiIntentUrl": "upi://pay?pa=aplarecharge@ybl&pn=AplaRecharge&am=500.00&tr=ORD17932747207031B15&tn=Wallet_ORD17932747207031B15&cu=INR",
+      "gatewayPaymentUrl": "",
+      "status": "SUCCESS",
+      "credited": true,
+      "bankUtr": "493274729062",
+      "createdAt": "2026-10-29T11:52:00.704Z"
+    },
+    {
+      "orderId": "ORD1793273364548F7A4",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 500,
+      "preferredApp": "PhonePe",
+      "provider": "UPIGateway",
+      "mode": "sandbox",
+      "signature": "50da970c7b41efa525b6ff391a0fa371e68cd03e6ea951072dc5bd788dcc9208",
+      "upiIntentUrl": "upi://pay?pa=aplarecharge@ybl&pn=AplaRecharge&am=500.00&tr=ORD1793273364548F7A4&tn=Wallet_ORD1793273364548F7A4&cu=INR",
+      "gatewayPaymentUrl": "",
+      "status": "SUCCESS",
+      "credited": true,
+      "bankUtr": "493273366599",
+      "createdAt": "2026-10-29T11:29:24.550Z"
+    },
+    {
+      "orderId": "ORD1793232871248A791",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 500,
+      "preferredApp": "UPI App",
+      "provider": "UPIGateway",
+      "mode": "sandbox",
+      "status": "SUCCESS",
+      "credited": true,
+      "bankUtr": "PhonePe • UTR: 493232874521",
+      "createdAt": "2026-10-29T11:29:07.149Z"
+    },
+    {
+      "orderId": "ORD179319788688946F0",
+      "userId": "USR_8446254037",
+      "userPhone": "8446254037",
+      "userName": "mkpp",
+      "amount": 100,
+      "preferredApp": "PhonePe",
+      "provider": "UPIGateway",
+      "mode": "sandbox",
+      "signature": "a5cfd8ee5b8e1806469a06c8366c3e553e680a9f792bcc9647334969933be3d9",
+      "upiIntentUrl": "upi://pay?pa=aplarecharge@ybl&pn=AplaRecharge&am=100.00&tr=ORD179319788688946F0&tn=Wallet_ORD179319788688946F0&cu=INR",
+      "gatewayPaymentUrl": "",
+      "status": "SUCCESS",
+      "credited": true,
+      "bankUtr": "493197890029",
+      "createdAt": "2026-10-28T14:31:26.891Z"
+    }
+  ]
+}
