@@ -36,12 +36,89 @@ async function demoRecharge({ number }) {
   return { status: 'success', apiRef: 'DEMO' + Date.now(), message: 'Demo रिचार्ज यशस्वी' };
 }
 
+import crypto from 'crypto';
+
+// Map internal operator codes to ZuelPay operator codes when ZuelPay is used
+const ZUELPAY_OPERATOR_MAP = {
+  JIO: 'RJP',
+  AIRTEL: 'ATP',
+  VI: 'IDP',
+  BSNL: 'BGP',
+  MTNL: 'MTNL',
+  TATAPLAY: 'TTV',
+  AIRTELDTH: 'ATV',
+  DISHTV: 'DTV',
+  VIDEOCOND2H: 'VTV',
+  SUNDIRECT: 'STV',
+};
+
 async function liveRecharge({ number, apiCode, amount, reqId }, api) {
   if (!api.rechargeUrl || !api.apiKey) {
     return { status: 'failed', apiRef: null, message: 'Live API सेट केलेला नाही. Admin Panel मध्ये API Settings भरा.' };
   }
-  const url = api.rechargeUrl
-    .replaceAll('{apikey}', encodeURIComponent(api.apiKey))
+
+  const rawUrl = String(api.rechargeUrl).trim();
+  const rawKey = String(api.apiKey).trim();
+
+  // Universal ZuelPay POST Adapter (triggered automatically when URL has zuelpay.in / zuelpay.com)
+  if (rawUrl.toLowerCase().includes('zuelpay')) {
+    // Supports apiKey formats:
+    //   1) "TOKEN|CHECKSUM"
+    //   2) "TOKEN|MOBILE|PASSWORD" (auto-computes HMAC-SHA256 checkSum)
+    //   3) "TOKEN"
+    const parts = rawKey.split('|').map((s) => s.trim());
+    const token = parts[0] || '';
+    let checkSum = parts[1] || '';
+    if (parts.length >= 3) {
+      const mobile = parts[1];
+      const password = parts.slice(2).join('|');
+      checkSum = crypto.createHmac('sha256', password).update(`${token}:${mobile}`).digest('hex');
+    }
+
+    const zuelOpCode = ZUELPAY_OPERATOR_MAP[String(apiCode).toUpperCase()] || apiCode;
+    const zuelAgentId = String(reqId || ('ZLP' + Date.now())).replace(/[^a-zA-Z0-9]/g, '').slice(0, 24);
+
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 60000);
+      const res = await fetch(rawUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Token: token,
+          checkSum: checkSum,
+        },
+        body: JSON.stringify({
+          code: zuelOpCode,
+          number: String(number).trim(),
+          agent_id: zuelAgentId,
+          amount: String(amount),
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      const text = await res.text();
+      let j = {};
+      try {
+        j = JSON.parse(text);
+      } catch (_) {}
+
+      const apiRef = j.utr || j.tlid || j.txid || null;
+      const cbStatus = String(j.callback_status || j.status || '').toUpperCase();
+      if (cbStatus === 'SUCCESS' || (String(j.status).toLowerCase() === 'success' && cbStatus !== 'PENDING' && j.result === 0)) {
+        return { status: 'success', apiRef, message: j.msg || 'रिचार्ज यशस्वी', raw: text.slice(0, 500) };
+      }
+      if (cbStatus === 'PENDING') {
+        return { status: 'pending', apiRef, message: j.msg || 'रिचार्ज प्रक्रियेत आहे', raw: text.slice(0, 500) };
+      }
+      return { status: 'failed', apiRef, message: j.error || j.msg || 'ZuelPay ने रिचार्ज नाकारला', raw: text.slice(0, 500) };
+    } catch (e) {
+      return { status: 'pending', apiRef: null, message: 'ZuelPay कडून उत्तर आले नाही: ' + e.message };
+    }
+  }
+
+  const url = rawUrl
+    .replaceAll('{apikey}', encodeURIComponent(rawKey))
     .replaceAll('{number}', encodeURIComponent(number))
     .replaceAll('{operator}', encodeURIComponent(apiCode))
     .replaceAll('{amount}', encodeURIComponent(amount))
