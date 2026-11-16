@@ -502,13 +502,14 @@ app.post('/api/payment/create-order', async (req, res) => {
 
   // If Live Payment Gateway is configured (Cashfree or UPIGateway / EkQR / IMB)
   const isCashfree = String(pg.provider || 'Cashfree').toLowerCase() === 'cashfree';
+  let paymentSessionId = '';
   if (pg.mode === 'live' && (isCashfree || pg.merchantKey)) {
     if (isCashfree) {
-      // Cashfree Production Payment Link API
+      // Cashfree Production Orders API (v2023-08-01)
       try {
         const cfAppId = resolveCashfreeAppId(pg);
         const cfSecret = resolveCashfreeSecret(pg);
-        const cfResp = await fetch('https://api.cashfree.com/pg/links', {
+        const cfResp = await fetch('https://api.cashfree.com/pg/orders', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -517,28 +518,26 @@ app.post('/api/payment/create-order', async (req, res) => {
             'x-client-secret': cfSecret,
           },
           body: JSON.stringify({
-            link_id: orderId,
-            link_amount: numAmount,
-            link_currency: 'INR',
-            link_purpose: 'AplaRecharge Wallet Topup',
+            order_id: orderId,
+            order_amount: numAmount,
+            order_currency: 'INR',
+            order_note: 'AplaRecharge Wallet Topup',
             customer_details: {
+              customer_id: 'CUST_' + cleanPhone,
               customer_phone: cleanPhone,
               customer_name: user.name || 'AplaRecharge Customer',
               customer_email: `${cleanPhone}@aplarecharge.in`,
             },
-            link_meta: {
+            order_meta: {
               return_url: 'https://aplarecharge-server.onrender.com/api/payment/cashfree-return?order_id={order_id}',
-              upi_intent: true,
-            },
-            link_notify: {
-              send_sms: false,
-              send_email: false,
+              notify_url: 'https://aplarecharge-server.onrender.com/api/payment/cashfree-webhook',
             },
           }),
         });
         const cfData = await cfResp.json();
-        if (cfData?.link_url) {
-          gatewayPaymentUrl = cfData.link_url;
+        if (cfData?.payment_session_id) {
+          paymentSessionId = cfData.payment_session_id;
+          gatewayPaymentUrl = `https://aplarecharge-server.onrender.com/api/payment/cashfree-checkout?session_id=${encodeURIComponent(paymentSessionId)}&order_id=${encodeURIComponent(orderId)}`;
         }
       } catch (err) {
         console.error('Cashfree order creation error:', err.message);
@@ -663,11 +662,11 @@ app.post('/api/payment/verify-order', async (req, res) => {
   const isCashfree = String(pg.provider || 'Cashfree').toLowerCase() === 'cashfree';
   if (pg.mode === 'live' && (isCashfree || pg.merchantKey)) {
     if (isCashfree) {
-      // Cashfree Server-to-Server Live Verification
+      // Cashfree Server-to-Server Live Order Verification (v2023-08-01)
       try {
         const cfAppId = resolveCashfreeAppId(pg);
         const cfSecret = resolveCashfreeSecret(pg);
-        const cfResp = await fetch(`https://api.cashfree.com/pg/links/${encodeURIComponent(order.orderId)}`, {
+        const cfResp = await fetch(`https://api.cashfree.com/pg/orders/${encodeURIComponent(order.orderId)}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -677,14 +676,13 @@ app.post('/api/payment/verify-order', async (req, res) => {
           },
         });
         const cfData = await cfResp.json();
-        const linkStatus = String(cfData?.link_status || '').toUpperCase();
-        if (linkStatus === 'PAID') {
+        const orderStatus = String(cfData?.order_status || '').toUpperCase();
+        if (orderStatus === 'PAID') {
           verifiedSuccess = true;
-          bankUtr = String(cfData?.link_id || order.orderId);
+          bankUtr = String(cfData?.cf_order_id || order.orderId);
         } else if (String(gatewayStatus).toUpperCase() === 'SUCCESS') {
-          // If frontend completed checkout and link state takes a moment to update
           verifiedSuccess = true;
-          bankUtr = String(cfData?.link_id || order.orderId);
+          bankUtr = String(cfData?.cf_order_id || order.orderId);
         }
       } catch (err) {
         console.error('Cashfree verification query error:', err.message);
@@ -841,8 +839,99 @@ app.all(['/api/payment/cashfree-webhook', '/api/payment/webhook'], async (req, r
   res.status(200).json({ status: 'ok' });
 });
 
-app.get('/api/payment/cashfree-return', (req, res) => {
-  const orderId = req.query.order_id || '';
+app.get('/api/payment/cashfree-checkout', (req, res) => {
+  const sessionId = String(req.query.session_id || '').trim();
+  const orderId = String(req.query.order_id || '').trim();
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>AplaRecharge - सुरक्षित पेमेंट</title>
+        <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+        <style>
+          body { font-family: sans-serif; background: #0f172a; color: #fff; text-align: center; padding: 50px 20px; }
+          .card { max-width: 400px; margin: 0 auto; background: #1e293b; border-radius: 16px; padding: 28px; border: 1px solid #334155; }
+          h2 { color: #38bdf8; margin-bottom: 10px; font-size: 20px; }
+          p { color: #94a3b8; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <h2>🔒 सुरक्षित पेमेंट पेज उघडत आहे...</h2>
+          <p>कृपया थोडा वेळ थांबा (Order: ${orderId})</p>
+        </div>
+        <script>
+          window.onload = function() {
+            const sessionId = ${JSON.stringify(sessionId)};
+            if (sessionId && window.Cashfree) {
+              const cashfree = Cashfree({ mode: "production" });
+              cashfree.checkout({
+                paymentSessionId: sessionId,
+                redirectTarget: "_self"
+              });
+            }
+          };
+        </script>
+      </body>
+    </html>
+  `);
+});
+
+app.get('/api/payment/cashfree-return', async (req, res) => {
+  const orderId = String(req.query.order_id || '').trim();
+  let statusText = 'तुमचे पेमेंट तपासले जात आहे. कृपया AplaRecharge ॲप उघडा.';
+  let icon = '✅';
+
+  if (orderId) {
+    try {
+      const pg = db().settings.paymentGateway || {};
+      const cfAppId = resolveCashfreeAppId(pg);
+      const cfSecret = resolveCashfreeSecret(pg);
+      const cfResp = await fetch(`https://api.cashfree.com/pg/orders/${encodeURIComponent(orderId)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-version': '2023-08-01',
+          'x-client-id': cfAppId,
+          'x-client-secret': cfSecret,
+        },
+      });
+      const cfData = await cfResp.json();
+      const orderStatus = String(cfData?.order_status || '').toUpperCase();
+      if (orderStatus === 'PAID') {
+        statusText = `पेमेंट यशस्वी झाले! रक्कम तुमच्या AplaRecharge वॉलेटमध्ये जमा झाली आहे.`;
+        let order = (db().paymentOrders || []).find((o) => o.orderId === orderId);
+        if (order && !order.credited) {
+          order.status = 'SUCCESS';
+          order.credited = true;
+          const bankUtr = String(cfData?.cf_order_id || orderId);
+          order.bankUtr = bankUtr;
+
+          const user = db().users.find((u) => u.phone === order.userPhone || u.id === order.userId);
+          if (user) {
+            user.walletBalance = Number((user.walletBalance + order.amount).toFixed(2));
+          }
+          db().addMoneyRequests.unshift({
+            id: order.orderId,
+            userId: user ? user.id : 'USR',
+            userPhone: order.userPhone,
+            userName: order.userName,
+            amount: order.amount,
+            utrNumber: `Cashfree Return • UTR: ${bankUtr}`,
+            status: 'approved',
+            createdAt: new Date().toISOString(),
+          });
+          save();
+        }
+      } else if (orderStatus && orderStatus !== 'ACTIVE') {
+        icon = '⚠️';
+        statusText = `पेमेंट स्थिती: ${orderStatus}. कृपया AplaRecharge ॲपमध्ये तपासा.`;
+      }
+    } catch (_) {}
+  }
+
   res.send(`
     <!DOCTYPE html>
     <html>
@@ -861,9 +950,9 @@ app.get('/api/payment/cashfree-return', (req, res) => {
       </head>
       <body>
         <div class="card">
-          <div class="icon">✅</div>
+          <div class="icon">${icon}</div>
           <h2>पेमेंट प्रक्रिया पूर्ण झाली!</h2>
-          <p>तुमचे पेमेंट तपासले जात आहे. कृपया AplaRecharge ॲप उघडा. तुमचे वॉलेट आपोआप अपडेट होईल.</p>
+          <p>${statusText}</p>
           <p style="font-size: 12px; color: #64748b;">Order Ref: ${orderId}</p>
         </div>
       </body>
