@@ -65,11 +65,12 @@ function defaultData() {
       upiName: 'AplaRecharge',
       minAddMoney: 10,
       paymentGateway: {
-        provider: 'UPIGateway', // UPIGateway, IMB, Razorpay, Cashfree
-        mode: 'sandbox', // 'sandbox' or 'live'
+        provider: 'Cashfree', // Cashfree, UPIGateway, IMB, Razorpay
+        mode: 'live', // 'sandbox' or 'live'
         merchantKey: '',
-        createOrderUrl: 'https://api.ekqr.in/api/create_order',
-        checkStatusUrl: 'https://api.ekqr.in/api/check_order_status',
+        appId: '1526434e9286ec7f60012b5cfb64346251',
+        createOrderUrl: 'https://api.cashfree.com/pg/links',
+        checkStatusUrl: 'https://api.cashfree.com/pg/links',
       },
       planApi: {
         mode: 'smart', // 'smart' (in-built) or 'live' (real API)
@@ -95,6 +96,134 @@ function defaultData() {
 
 let data;
 let cloudSyncTimer = null;
+
+export function isGenericUserName(name, phone = '') {
+  const s = String(name || '').trim();
+  if (!s) return true;
+  if (s.includes('?')) return true;
+  const cleanPhone = String(phone || '').replace(/\D/g, '');
+  if (cleanPhone && (s === cleanPhone || s === `ग्राहक ${cleanPhone}` || s === `ग्राहक ${cleanPhone.slice(-4)}`)) {
+    return true;
+  }
+  if (/^ग्राहक(\s+\d+)?$/.test(s) || /^ग्राहक\s*\(Demo/i.test(s) || /^User\s*\d*$/i.test(s)) {
+    return true;
+  }
+  return false;
+}
+
+export function unifyAccountsByPhone(target = data) {
+  if (!target || typeof target !== 'object') return false;
+  let changed = false;
+
+  if (!Array.isArray(target.users)) target.users = [];
+  if (!Array.isArray(target.transactions)) target.transactions = [];
+  if (!Array.isArray(target.addMoneyRequests)) target.addMoneyRequests = [];
+  if (!Array.isArray(target.paymentOrders)) target.paymentOrders = [];
+
+  const byPhone = new Map();
+
+  // 1. Deduplicate users strictly by 10-digit mobile number
+  for (const rawU of target.users) {
+    if (!rawU) continue;
+    const cleanPhone = String(rawU.phone || '').replace(/\D/g, '');
+    if (cleanPhone.length !== 10) continue;
+    const canonicalId = `USR_${cleanPhone}`;
+
+    if (!byPhone.has(cleanPhone)) {
+      const copy = {
+        ...rawU,
+        id: canonicalId,
+        phone: cleanPhone,
+        name: String(rawU.name || `ग्राहक ${cleanPhone.slice(-4)}`).trim(),
+        walletBalance: Number(rawU.walletBalance || 0),
+        totalCashback: Number(rawU.totalCashback || 0),
+        manualDebit: Number(rawU.manualDebit || 0),
+        blocked: Boolean(rawU.blocked),
+      };
+      if (rawU.id !== canonicalId || rawU.phone !== cleanPhone) changed = true;
+      byPhone.set(cleanPhone, copy);
+    } else {
+      // Merge duplicate user entry for the same mobile number into the single canonical account
+      const primary = byPhone.get(cleanPhone);
+      if (isGenericUserName(primary.name, cleanPhone) && !isGenericUserName(rawU.name, cleanPhone)) {
+        primary.name = String(rawU.name).trim();
+      }
+      primary.manualDebit = Math.max(Number(primary.manualDebit || 0), Number(rawU.manualDebit || 0));
+      if (!primary.avatar && rawU.avatar) primary.avatar = rawU.avatar;
+      if (rawU.blocked) primary.blocked = true;
+      if (rawU.createdAt && (!primary.createdAt || rawU.createdAt < primary.createdAt)) {
+        primary.createdAt = rawU.createdAt;
+      }
+      changed = true;
+    }
+  }
+
+  // 2. Ensure any phone present in transactions or addMoneyRequests also has its single canonical user account
+  for (const item of [...target.addMoneyRequests, ...target.transactions]) {
+    if (!item) continue;
+    const cleanPhone = String(item.userPhone || '').replace(/\D/g, '');
+    if (cleanPhone.length !== 10) continue;
+    if (!byPhone.has(cleanPhone)) {
+      byPhone.set(cleanPhone, {
+        id: `USR_${cleanPhone}`,
+        phone: cleanPhone,
+        name: String(item.userName || `ग्राहक ${cleanPhone.slice(-4)}`).trim(),
+        walletBalance: 0,
+        totalCashback: 0,
+        manualDebit: 0,
+        avatar: '',
+        blocked: false,
+        createdAt: item.createdAt || new Date().toISOString(),
+      });
+      changed = true;
+    } else {
+      const u = byPhone.get(cleanPhone);
+      if (isGenericUserName(u.name, cleanPhone) && !isGenericUserName(item.userName, cleanPhone)) {
+        u.name = String(item.userName).trim();
+        changed = true;
+      }
+    }
+  }
+
+  target.users = Array.from(byPhone.values());
+
+  // 3. Propagate each phone's canonical userId and current userName to all transactions, addMoneyRequests & paymentOrders
+  for (const r of target.addMoneyRequests) {
+    const cleanPhone = String(r.userPhone || '').replace(/\D/g, '');
+    const u = byPhone.get(cleanPhone);
+    if (u) {
+      if (r.userPhone !== cleanPhone) { r.userPhone = cleanPhone; changed = true; }
+      if (r.userId !== u.id) { r.userId = u.id; changed = true; }
+      if (r.userName !== u.name) { r.userName = u.name; changed = true; }
+    }
+  }
+
+  for (const t of target.transactions) {
+    const cleanPhone = String(t.userPhone || '').replace(/\D/g, '');
+    const u = byPhone.get(cleanPhone);
+    if (u) {
+      if (t.userPhone !== cleanPhone) { t.userPhone = cleanPhone; changed = true; }
+      if (t.userId !== u.id) { t.userId = u.id; changed = true; }
+      if (t.userName !== u.name) { t.userName = u.name; changed = true; }
+      if ((t.service === 'debit' || t.operatorCode === 'ADMIN_DEBIT') && t.customerName !== u.name) {
+        t.customerName = u.name;
+        changed = true;
+      }
+    }
+  }
+
+  for (const o of target.paymentOrders) {
+    const cleanPhone = String(o.userPhone || '').replace(/\D/g, '');
+    const u = byPhone.get(cleanPhone);
+    if (u) {
+      if (o.userPhone !== cleanPhone) { o.userPhone = cleanPhone; changed = true; }
+      if (o.userId !== u.id) { o.userId = u.id; changed = true; }
+      if (o.userName !== u.name) { o.userName = u.name; changed = true; }
+    }
+  }
+
+  return changed;
+}
 
 function applyDefaults(target) {
   const fresh = defaultData();
@@ -159,19 +288,20 @@ export function mergeDatabaseState(incoming) {
     }
   }
 
-  // Merge users by phone
+  // Merge users by phone (strictly 1 account per 10-digit mobile number)
   if (Array.isArray(incoming.users)) {
     if (!Array.isArray(data.users)) data.users = [];
     for (const u of incoming.users) {
       if (!u || !u.phone) continue;
       const cleanPhone = String(u.phone).replace(/\D/g, '');
       if (cleanPhone.length !== 10) continue;
+      const canonicalId = `USR_${cleanPhone}`;
       const existing = data.users.find((x) => x.phone === cleanPhone);
       if (!existing) {
         data.users.push({
-          id: u.id || newId('USR'),
+          id: canonicalId,
           phone: cleanPhone,
-          name: u.name || ('ग्राहक ' + cleanPhone.slice(-4)),
+          name: String(u.name || ('ग्राहक ' + cleanPhone.slice(-4))).trim(),
           walletBalance: Number(u.walletBalance || 0),
           totalCashback: Number(u.totalCashback || 0),
           manualDebit: Number(u.manualDebit || 0),
@@ -182,8 +312,9 @@ export function mergeDatabaseState(incoming) {
         });
         changed = true;
       } else {
-        if (u.name && (!existing.name || existing.name.includes('?'))) {
-          existing.name = u.name;
+        existing.id = canonicalId;
+        if (u.name && !isGenericUserName(u.name, cleanPhone) && existing.name !== String(u.name).trim()) {
+          existing.name = String(u.name).trim();
           changed = true;
         }
         if (u.manualDebit !== undefined && Number(u.manualDebit) > Number(existing.manualDebit || 0)) {
@@ -252,6 +383,10 @@ export function mergeDatabaseState(incoming) {
     changed = true;
   }
 
+  if (unifyAccountsByPhone(data)) {
+    changed = true;
+  }
+
   return changed;
 }
 
@@ -293,6 +428,7 @@ export function load() {
   } else {
     data = defaultData();
   }
+  unifyAccountsByPhone(data);
   // If db.json was freshly created or wiped on container restart, merge from seed_snapshot.json if available
   if (fs.existsSync(SEED_FILE)) {
     try {
@@ -310,6 +446,7 @@ export function load() {
 
 export function save(skipCloudPush = false) {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  unifyAccountsByPhone(data);
   const tmp = DB_FILE + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
   fs.renameSync(tmp, DB_FILE);
