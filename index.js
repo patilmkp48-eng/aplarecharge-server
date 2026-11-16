@@ -529,7 +529,7 @@ app.post('/api/payment/create-order', async (req, res) => {
               customer_email: `${cleanPhone}@aplarecharge.in`,
             },
             order_meta: {
-              return_url: 'https://aplarecharge-server.onrender.com/api/payment/cashfree-return?order_id={order_id}',
+              return_url: 'https://patilmkp48-eng.github.io/aplarecharge-website/pay.html?done=1&order_id={order_id}',
               notify_url: 'https://aplarecharge-server.onrender.com/api/payment/cashfree-webhook',
             },
           }),
@@ -537,7 +537,7 @@ app.post('/api/payment/create-order', async (req, res) => {
         const cfData = await cfResp.json();
         if (cfData?.payment_session_id) {
           paymentSessionId = cfData.payment_session_id;
-          gatewayPaymentUrl = `https://aplarecharge-server.onrender.com/api/payment/cashfree-checkout?session_id=${encodeURIComponent(paymentSessionId)}&order_id=${encodeURIComponent(orderId)}`;
+          gatewayPaymentUrl = `https://patilmkp48-eng.github.io/aplarecharge-website/pay.html?session_id=${encodeURIComponent(paymentSessionId)}&order_id=${encodeURIComponent(orderId)}`;
         }
       } catch (err) {
         console.error('Cashfree order creation error:', err.message);
@@ -678,9 +678,6 @@ app.post('/api/payment/verify-order', async (req, res) => {
         const cfData = await cfResp.json();
         const orderStatus = String(cfData?.order_status || '').toUpperCase();
         if (orderStatus === 'PAID') {
-          verifiedSuccess = true;
-          bankUtr = String(cfData?.cf_order_id || order.orderId);
-        } else if (String(gatewayStatus).toUpperCase() === 'SUCCESS') {
           verifiedSuccess = true;
           bankUtr = String(cfData?.cf_order_id || order.orderId);
         }
