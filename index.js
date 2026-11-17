@@ -1190,6 +1190,9 @@ app.post('/api/admin/login', (req, res) => {
 
 app.get('/api/admin/overview', requireAdmin, (req, res) => {
   const d = db();
+  if (unifyAccountsByPhone(d)) {
+    save();
+  }
   for (const u of d.users || []) {
     recalculateUserLedger(u);
   }
