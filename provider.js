@@ -52,6 +52,21 @@ const ZUELPAY_OPERATOR_MAP = {
   SUNDIRECT: 'STV',
 };
 
+// Map internal operator codes to Pay2All provider_id codes when Pay2All is used
+const PAY2ALL_OPERATOR_MAP = {
+  AIRTEL: 1,
+  JIO: 2,
+  VI: 3,
+  BSNL: 4,
+  MTNL: 4,
+  TATAPLAY: 5,
+  AIRTELDTH: 6,
+  DISHTV: 7,
+  VIDEOCOND2H: 8,
+  D2H: 8,
+  SUNDIRECT: 9,
+};
+
 async function liveRecharge({ number, apiCode, amount, reqId }, api) {
   if (!api.rechargeUrl || !api.apiKey) {
     return { status: 'failed', apiRef: null, message: 'Live API सेट केलेला नाही. Admin Panel मध्ये API Settings भरा.' };
@@ -59,6 +74,69 @@ async function liveRecharge({ number, apiCode, amount, reqId }, api) {
 
   const rawUrl = String(api.rechargeUrl).trim();
   const rawKey = String(api.apiKey).trim();
+
+  // Universal Pay2All v1 POST Adapter (triggered automatically when URL has pay2all.in)
+  if (rawUrl.toLowerCase().includes('pay2all.in')) {
+    const p2aProviderId = PAY2ALL_OPERATOR_MAP[String(apiCode).toUpperCase()] || Number(apiCode) || 2;
+    const isUat = rawKey.toUpperCase().endsWith('|UAT') || rawUrl.toLowerCase().includes('mode=uat');
+    const cleanToken = rawKey.split('|')[0].trim();
+
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 60000);
+      const res = await fetch('https://pay2all.in/api/v1/recharge', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Authorization: `Bearer ${cleanToken}`,
+        },
+        body: JSON.stringify({
+          client_id: String(reqId || ('P2A_' + Date.now())),
+          provider_id: p2aProviderId,
+          number: String(number).trim(),
+          amount: Number(amount),
+          mode: isUat ? 'UAT' : 'LIVE',
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      const text = await res.text();
+      let j = {};
+      try {
+        j = JSON.parse(text);
+      } catch (_) {}
+
+      const dataObj = j.data || {};
+      const apiRef = dataObj.utr || dataObj.txn_id || dataObj.order_id || j.utr || j.txid || null;
+      const statusId = Number(j.status_id);
+
+      if (statusId === 1 || String(j.status).toLowerCase() === 'success') {
+        return {
+          status: 'success',
+          apiRef: apiRef || ('P2A' + Date.now()),
+          message: j.message || 'रिचार्ज यशस्वी (Pay2All)',
+          raw: text.slice(0, 500),
+        };
+      }
+      if (statusId === 3 || String(j.status).toLowerCase() === 'pending') {
+        return {
+          status: 'pending',
+          apiRef,
+          message: j.message || 'रिचार्ज प्रक्रियेत आहे',
+          raw: text.slice(0, 500),
+        };
+      }
+      return {
+        status: 'failed',
+        apiRef,
+        message: j.message || j.error || 'Pay2All कडून रिचार्ज असफल',
+        raw: text.slice(0, 500),
+      };
+    } catch (e) {
+      return { status: 'pending', apiRef: null, message: 'Pay2All सर्व्हरकडून उत्तर आले नाही: ' + e.message };
+    }
+  }
 
   // Universal ZuelPay POST Adapter (triggered automatically when URL has zuelpay.in / zuelpay.com)
   if (rawUrl.toLowerCase().includes('zuelpay')) {
