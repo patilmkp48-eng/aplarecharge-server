@@ -425,6 +425,10 @@
               <input id="set_notice" type="text" class="w-full mt-1 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm" />
             </div>
             <div>
+              <label class="text-xs text-slate-300 font-semibold">📞 कस्टमर केअर हेल्पलाईन / WhatsApp नंबर</label>
+              <input id="set_supportWhatsapp" type="text" maxlength="10" placeholder="उदा. 8446234037" class="w-full mt-1 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm" />
+            </div>
+            <div>
               <label class="text-xs text-slate-300 font-semibold">नवीन Admin Password (बदलायचा असल्यास)</label>
               <input id="set_newPass" type="password" placeholder="बदल नसेल तर रिकामे ठेवा" class="w-full mt-1 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm" />
             </div>
@@ -756,6 +760,8 @@
     function renderTxnRows(list) {
       if (!list.length) return '<tr><td colspan="7" class="py-6 text-center text-slate-500">कोणतेही रिचार्ज नाहीत</td></tr>';
       return list.map(t => {
+        const u = (state && state.users || []).find(x => x.phone === t.userPhone);
+        const displayName = (u && u.name) ? u.name : t.userName;
         const isSuccess = t.status === 'success' || t.status === 'approved';
         const isFailed = t.status === 'failed' || t.status === 'rejected';
         const isPending = t.status === 'pending';
@@ -781,7 +787,7 @@
           </td>
           <td class="py-2.5">
             <button onclick="openUserDetail('${t.userPhone}')" class="text-left group">
-              <div class="font-semibold text-white group-hover:text-indigo-300 underline decoration-dotted">${t.userName}</div>
+              <div class="font-semibold text-white group-hover:text-indigo-300 underline decoration-dotted">${displayName}</div>
               <div class="text-[11px] text-slate-400 font-mono">${t.userPhone}</div>
             </button>
           </td>
@@ -805,6 +811,7 @@
       if (!list.length) return `<tr><td colspan="${showActions ? 7 : 6}" class="py-6 text-center text-slate-500">कोणतेही वॉलेट पेमेंट नाही</td></tr>`;
       return list.map(r => {
         const u = (users || []).find(x => x.phone === r.userPhone || x.id === r.userId);
+        const displayName = (u && u.name) ? u.name : r.userName;
         const curBal = u ? '₹' + Number(u.walletBalance || 0).toFixed(2) : '-';
         return `
           <tr>
@@ -814,7 +821,7 @@
             </td>
             <td class="py-2.5">
               <button onclick="openUserDetail('${r.userPhone}')" class="text-left group">
-                <div class="font-bold text-white group-hover:text-indigo-300 underline decoration-dotted">${r.userName}</div>
+                <div class="font-bold text-white group-hover:text-indigo-300 underline decoration-dotted">${displayName}</div>
                 <div class="text-[11px] text-slate-400 font-mono">${r.userPhone}</div>
               </button>
             </td>
@@ -1206,6 +1213,7 @@
       document.getElementById('set_rechargeUrl').value = settings.api.rechargeUrl || '';
       document.getElementById('set_upiId').value = settings.upiId || '';
       document.getElementById('set_upiName').value = settings.upiName || '';
+      document.getElementById('set_supportWhatsapp').value = settings.supportWhatsapp || '8446234037';
       document.getElementById('set_notice').value = settings.notice || '';
       if (settings.paymentGateway) {
         document.getElementById('set_pgProvider').value = settings.paymentGateway.provider || 'UPIGateway';
@@ -1310,6 +1318,7 @@
         },
         upiId: document.getElementById('set_upiId').value,
         upiName: document.getElementById('set_upiName').value,
+        supportWhatsapp: document.getElementById('set_supportWhatsapp').value,
         notice: document.getElementById('set_notice').value,
         newPassword: document.getElementById('set_newPass').value,
       };
