@@ -114,6 +114,7 @@ app.get('/api/config', (req, res) => {
     banners: s.banners,
     upiId: s.upiId,
     upiName: s.upiName,
+    supportWhatsapp: s.supportWhatsapp || '8446234037',
     minAddMoney: s.minAddMoney,
     operators: operatorsWithCashback,
     commissions: comms,
@@ -334,6 +335,7 @@ app.post('/api/client-sync', (req, res) => {
       notice: s.notice,
       upiId: s.upiId,
       upiName: s.upiName,
+      supportWhatsapp: s.supportWhatsapp || '8446234037',
       minAddMoney: s.minAddMoney,
       paymentGateway: {
         provider: s.paymentGateway?.provider || 'UPIGateway',
@@ -855,6 +857,43 @@ app.all(['/api/payment/cashfree-webhook', '/api/payment/webhook'], async (req, r
   res.status(200).json({ status: 'ok' });
 });
 
+// Pay2All Recharge Status Callback / Webhook
+app.all(['/api/recharge/pay2all-webhook', '/pay2all/callback'], (req, res) => {
+  const body = { ...(req.query || {}), ...(req.body || {}) };
+  const clientId = String(body.client_id || body?.data?.client_id || '').trim();
+  const statusId = Number(body.status_id ?? body?.data?.status_id);
+  const statusStr = String(body.status || body?.data?.status || '').toLowerCase();
+  const utr = String(body.utr || body?.data?.utr || body.txn_id || '').trim();
+
+  if (clientId) {
+    const txn = (db().transactions || []).find((t) => t.id === clientId);
+    if (txn && txn.status === 'pending') {
+      const user = (db().users || []).find((u) => u.phone === txn.userPhone || u.id === txn.userId);
+      if (statusId === 1 || statusStr === 'success') {
+        txn.status = 'success';
+        if (utr) txn.apiRef = utr;
+        txn.message = 'रिचार्ज यशस्वी (Pay2All)';
+        if (user && txn.cashback > 0) {
+          user.walletBalance = Number((user.walletBalance + txn.cashback).toFixed(2));
+          user.totalCashback = Number(((user.totalCashback || 0) + txn.cashback).toFixed(2));
+        }
+        save();
+      } else if (statusId === 2 || statusStr === 'failed' || statusStr === 'failure') {
+        txn.status = 'failed';
+        txn.message = body.message || 'ऑपरेटरकडून रिचार्ज असफल - रक्कम रिफंड केली';
+        if (!txn.refunded && user) {
+          user.walletBalance = Number((user.walletBalance + txn.amount).toFixed(2));
+          txn.cashback = 0;
+          txn.adminProfit = 0;
+          txn.refunded = true;
+        }
+        save();
+      }
+    }
+  }
+  res.status(200).json({ status: 'ok' });
+});
+
 app.get('/api/payment/cashfree-checkout', (req, res) => {
   const sessionId = String(req.query.session_id || '').trim();
   const orderId = String(req.query.order_id || '').trim();
@@ -1242,7 +1281,7 @@ app.get('/api/admin/overview', requireAdmin, (req, res) => {
 // Update Settings (Mode, Services, API Key, Payment Gateway, Plan API, UPI, Notice, API Wallet Balance)
 app.post('/api/admin/settings', requireAdmin, (req, res) => {
   const d = db();
-  const { mode, services, api, paymentGateway, planApi, upiId, upiName, minAddMoney, notice, apiWalletBalance, newPassword } = req.body;
+  const { mode, services, api, paymentGateway, planApi, upiId, upiName, supportWhatsapp, minAddMoney, notice, apiWalletBalance, newPassword } = req.body;
 
   if (mode) d.settings.mode = mode;
   if (services) d.settings.services = { ...d.settings.services, ...services };
@@ -1255,6 +1294,7 @@ app.post('/api/admin/settings', requireAdmin, (req, res) => {
   }
   if (upiId !== undefined) d.settings.upiId = upiId.trim();
   if (upiName !== undefined) d.settings.upiName = upiName.trim();
+  if (supportWhatsapp !== undefined) d.settings.supportWhatsapp = String(supportWhatsapp).replace(/\D/g, '').slice(-10) || '8446234037';
   if (minAddMoney !== undefined) d.settings.minAddMoney = Number(minAddMoney) || 10;
   if (notice !== undefined) d.settings.notice = notice;
   if (apiWalletBalance !== undefined) d.apiWalletBalance = Number(apiWalletBalance) || 0;

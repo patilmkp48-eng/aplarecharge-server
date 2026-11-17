@@ -63,6 +63,7 @@ function defaultData() {
       },
       upiId: 'aplarecharge@ybl',
       upiName: 'AplaRecharge',
+      supportWhatsapp: '8446234037',
       minAddMoney: 10,
       paymentGateway: {
         provider: 'Cashfree', // Cashfree, UPIGateway, IMB, Razorpay

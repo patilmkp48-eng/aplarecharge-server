@@ -1,0 +1,326 @@
+{
+  "settings": {
+    "appName": "AplaRecharge",
+    "admin": {
+      "username": "admin",
+      "passwordHash": "a51c365db4d8c7b40a6ad2b16287cb91:6253331a2d490653f2638934932e35f56649e3eac85e338daa18cbca8a23384e5a240e557c35f71bba622eb836b50e305f8441b8cef2ead08915f125df66ea44",
+      "mustChangePassword": true
+    },
+    "mode": "live",
+    "demoOtp": "123456",
+    "services": {
+      "mobile": true,
+      "postpaid": true,
+      "broadband": true,
+      "dth": true,
+      "electricity": true,
+      "fastag": true
+    },
+    "api": {
+      "providerName": "Pay2All",
+      "rechargeUrl": "https://pay2all.in/api/v1/recharge",
+      "apiKey": "t2a_4fc4c350_a4991d46ebf699b432abae52e3377c276bc43be7a516877d",
+      "successKeyword": "success",
+      "pendingKeyword": "pending"
+    },
+    "upiId": "",
+    "upiName": "AplaRecharge",
+    "minAddMoney": 10,
+    "paymentGateway": {
+      "provider": "Cashfree",
+      "mode": "live",
+      "merchantKey": "",
+      "appId": "1526434e9286ec7f60012b5cfb64346251",
+      "createOrderUrl": "https://api.cashfree.com/pg/orders",
+      "checkStatusUrl": "https://api.cashfree.com/pg/orders"
+    },
+    "planApi": {
+      "mode": "smart",
+      "providerName": "Mplan / KwikAPI / PlanAPI",
+      "apiKey": "",
+      "rOfferUrl": "https://api.mplan.in/api/Plans.php?apikey={apikey}&offer=roffer&tel={number}&operator={operator}",
+      "regularPlansUrl": "https://api.mplan.in/api/Plans.php?apikey={apikey}&cricle=Maharashtra&operator={operator}"
+    },
+    "notice": "AplaRecharge मध्ये आपले स्वागत आहे! प्रत्येक रिचार्जवर कॅशबॅक मिळवा. ",
+    "banners": [],
+    "supportWhatsapp": "8446234037"
+  },
+  "commissions": {
+    "JIO": {
+      "apiCommission": 4,
+      "userCashback": 1,
+      "apiCode": "JIO",
+      "enabled": true
+    },
+    "AIRTEL": {
+      "apiCommission": 3,
+      "userCashback": 1,
+      "apiCode": "AIRTEL",
+      "enabled": true
+    },
+    "VI": {
+      "apiCommission": 3,
+      "userCashback": 1,
+      "apiCode": "VI",
+      "enabled": true
+    },
+    "BSNL": {
+      "apiCommission": 3,
+      "userCashback": 1,
+      "apiCode": "BSNL",
+      "enabled": true
+    },
+    "JIOPOSTPAID": {
+      "apiCommission": 1.2,
+      "userCashback": 0.5,
+      "apiCode": "JIOPOSTPAID",
+      "enabled": true
+    },
+    "AIRTELPOSTPAID": {
+      "apiCommission": 1.2,
+      "userCashback": 0.5,
+      "apiCode": "AIRTELPOSTPAID",
+      "enabled": true
+    },
+    "VIPOSTPAID": {
+      "apiCommission": 1.2,
+      "userCashback": 0.5,
+      "apiCode": "VIPOSTPAID",
+      "enabled": true
+    },
+    "BSNLPOSTPAID": {
+      "apiCommission": 1.2,
+      "userCashback": 0.5,
+      "apiCode": "BSNLPOSTPAID",
+      "enabled": true
+    },
+    "JIOFIBER": {
+      "apiCommission": 1.5,
+      "userCashback": 0.5,
+      "apiCode": "JIOFIBER",
+      "enabled": true
+    },
+    "AIRTELFIBER": {
+      "apiCommission": 1.5,
+      "userCashback": 0.5,
+      "apiCode": "AIRTELFIBER",
+      "enabled": true
+    },
+    "BSNLFIBER": {
+      "apiCommission": 1.5,
+      "userCashback": 0.5,
+      "apiCode": "BSNLFIBER",
+      "enabled": true
+    },
+    "ACTFIBER": {
+      "apiCommission": 1.5,
+      "userCashback": 0.5,
+      "apiCode": "ACTFIBER",
+      "enabled": true
+    },
+    "TATAPLAYFIBER": {
+      "apiCommission": 1.5,
+      "userCashback": 0.5,
+      "apiCode": "TATAPLAYFIBER",
+      "enabled": true
+    },
+    "HATHWAY": {
+      "apiCommission": 1.5,
+      "userCashback": 0.5,
+      "apiCode": "HATHWAY",
+      "enabled": true
+    },
+    "TATAPLAY": {
+      "apiCommission": 3.5,
+      "userCashback": 1.5,
+      "apiCode": "TATAPLAY",
+      "enabled": true
+    },
+    "AIRTELDTH": {
+      "apiCommission": 3.5,
+      "userCashback": 1.5,
+      "apiCode": "AIRTELDTH",
+      "enabled": true
+    },
+    "DISHTV": {
+      "apiCommission": 3.5,
+      "userCashback": 1.5,
+      "apiCode": "DISHTV",
+      "enabled": true
+    },
+    "D2H": {
+      "apiCommission": 3.5,
+      "userCashback": 1.5,
+      "apiCode": "D2H",
+      "enabled": true
+    },
+    "SUNDIRECT": {
+      "apiCommission": 3.5,
+      "userCashback": 1.5,
+      "apiCode": "SUNDIRECT",
+      "enabled": true
+    },
+    "MSEDCL": {
+      "apiCommission": 0.5,
+      "userCashback": 0,
+      "apiCode": "MSEDCL",
+      "enabled": true
+    },
+    "ADANIMUM": {
+      "apiCommission": 0.5,
+      "userCashback": 0,
+      "apiCode": "ADANIMUM",
+      "enabled": true
+    },
+    "TATAPOWERMUM": {
+      "apiCommission": 0.5,
+      "userCashback": 0,
+      "apiCode": "TATAPOWERMUM",
+      "enabled": true
+    },
+    "BEST": {
+      "apiCommission": 0.5,
+      "userCashback": 0,
+      "apiCode": "BEST",
+      "enabled": true
+    },
+    "TORRENTPOWER": {
+      "apiCommission": 0.5,
+      "userCashback": 0,
+      "apiCode": "TORRENTPOWER",
+      "enabled": true
+    },
+    "ICICIFASTAG": {
+      "apiCommission": 0.8,
+      "userCashback": 0.3,
+      "apiCode": "ICICIFASTAG",
+      "enabled": true
+    },
+    "SBIFASTAG": {
+      "apiCommission": 0.8,
+      "userCashback": 0.3,
+      "apiCode": "SBIFASTAG",
+      "enabled": true
+    },
+    "HDFCFASTAG": {
+      "apiCommission": 0.8,
+      "userCashback": 0.3,
+      "apiCode": "HDFCFASTAG",
+      "enabled": true
+    },
+    "AXISFASTAG": {
+      "apiCommission": 0.8,
+      "userCashback": 0.3,
+      "apiCode": "AXISFASTAG",
+      "enabled": true
+    },
+    "KOTAKFASTAG": {
+      "apiCommission": 0.8,
+      "userCashback": 0.3,
+      "apiCode": "KOTAKFASTAG",
+      "enabled": true
+    },
+    "AIRTELFASTAG": {
+      "apiCommission": 0.8,
+      "userCashback": 0.3,
+      "apiCode": "AIRTELFASTAG",
+      "enabled": true
+    },
+    "IDFCFASTAG": {
+      "apiCommission": 0.8,
+      "userCashback": 0.3,
+      "apiCode": "IDFCFASTAG",
+      "enabled": true
+    },
+    "BOBFASTAG": {
+      "apiCommission": 0.8,
+      "userCashback": 0.3,
+      "apiCode": "BOBFASTAG",
+      "enabled": true
+    }
+  },
+  "users": [
+    {
+      "id": "USR_8446234037",
+      "phone": "8446234037",
+      "name": "Moreshwar Patil",
+      "walletBalance": 10,
+      "totalCashback": 0,
+      "manualDebit": 0,
+      "initialBalance": 0,
+      "avatar": "",
+      "blocked": false,
+      "createdAt": "2026-11-17T01:14:22.495Z"
+    }
+  ],
+  "sessions": {},
+  "adminSessions": {
+    "7b10211416f7028f50f42cb75d49e18e277626778bdfce16a529ba6b5781b589": {
+      "username": "admin",
+      "loginAt": "2026-10-27T02:17:48.856Z"
+    },
+    "ad60510e974aa329f75e30500d64602229214b0a8c08b1b67255b3f14d323713": {
+      "username": "admin",
+      "loginAt": "2026-10-27T06:33:12.110Z"
+    },
+    "b62c255f1fe766a03a6bcd0f8aade18d5622bca0023c7f98d472be5780f5181f": {
+      "username": "admin",
+      "loginAt": "2026-10-27T13:26:39.504Z"
+    },
+    "cd50785e7b8ba06f17418834648dd4d43963ac59eddf1f813a9261bd625d4994": {
+      "username": "admin",
+      "loginAt": "2026-10-28T14:17:57.746Z"
+    },
+    "e85300d95fd6a4d9dd8808bf8eb102857408bc5df0ed548b4026e2286d3cba87": {
+      "username": "admin",
+      "loginAt": "2026-10-28T14:34:35.715Z"
+    },
+    "c2ad99603e827177e3bed1d44ca44fcaf5aad87615e4955cc89cb79c3f7774c3": {
+      "username": "admin",
+      "loginAt": "2026-10-28T16:20:31.725Z"
+    },
+    "d54ebc593c8b6b98193f000f1f46dae87bc6f313131f3625b5169a4c4a91dbe3": {
+      "username": "admin",
+      "loginAt": "2026-10-28T16:27:44.033Z"
+    },
+    "e2759b73887b96bef7356288337a0570f53d4373c28f14f3c3ad0f877daa65a6": {
+      "username": "admin",
+      "loginAt": "2026-10-30T01:20:27.191Z"
+    },
+    "0d14effe5010fc98063cd1c6c906c11b2d6072752cb72f71e26195bc1d89d44c": {
+      "username": "admin",
+      "loginAt": "2026-10-30T01:33:53.402Z"
+    }
+  },
+  "otps": {},
+  "transactions": [],
+  "addMoneyRequests": [
+    {
+      "id": "ORD1794878062105901D",
+      "userId": "USR_8446234037",
+      "userPhone": "8446234037",
+      "userName": "Moreshwar Patil",
+      "amount": 10,
+      "utrNumber": "Cashfree Webhook • UTR: 302959131671",
+      "status": "approved",
+      "createdAt": "2026-11-17T01:14:59.340Z"
+    }
+  ],
+  "apiWalletBalance": 0,
+  "paymentOrders": [
+    {
+      "orderId": "ORD1794878062105901D",
+      "userId": "USR_8446234037",
+      "userPhone": "8446234037",
+      "userName": "Moreshwar Patil",
+      "amount": 10,
+      "preferredApp": "PhonePe",
+      "provider": "Cashfree",
+      "mode": "live",
+      "status": "SUCCESS",
+      "credited": true,
+      "bankUtr": "302959131671",
+      "createdAt": "2026-11-17T01:14:22.495Z"
+    }
+  ]
+}
