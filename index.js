@@ -648,13 +648,24 @@ app.post('/api/payment/verify-order', async (req, res) => {
     return res.status(403).json({ error: 'सुरक्षा तपासणी अयशस्वी! (Invalid Order Signature - Fraud Blocked)' });
   }
 
-  // Anti-Fraud Lock 2: Idempotency Lock - Never credit an already processed order
+  const user = db().users.find((u) => u.phone === order.userPhone || u.id === order.userId);
+
+  // Anti-Fraud Lock 2: Idempotency Lock - If Webhook already credited this order, return SUCCESS immediately without double crediting!
   if (order.credited || order.status === 'SUCCESS') {
-    return res.status(400).json({ error: 'ही पेमेंट ऑर्डर आधीच वॉलेटमध्ये जमा झाली आहे! (Duplicate Credit Blocked)' });
+    return res.json({
+      success: true,
+      status: 'SUCCESS',
+      orderId: order.orderId,
+      bankUtr: order.bankUtr || order.orderId,
+      amount: order.amount,
+      walletBalance: user ? user.walletBalance : order.amount,
+      message: `🎉 अभिनंदन! ₹${order.amount} यशस्वीरीत्या वॉलेटमध्ये जमा झाले! (UTR: ${order.bankUtr || order.orderId})`,
+    });
   }
 
   const pg = db().settings.paymentGateway || { mode: 'sandbox' };
   let verifiedSuccess = false;
+  let isStillActive = false;
   let bankUtr = '';
 
   const checkStatusUrl = pg.checkStatusUrl || (pg.provider === 'UPIGateway' || pg.provider === 'EkQR' ? 'https://api.ekqr.in/api/check_order_status' : '');
@@ -680,6 +691,8 @@ app.post('/api/payment/verify-order', async (req, res) => {
         if (orderStatus === 'PAID') {
           verifiedSuccess = true;
           bankUtr = String(cfData?.cf_order_id || order.orderId);
+        } else if (orderStatus === 'ACTIVE' && String(gatewayStatus).toUpperCase() !== 'FAILED') {
+          isStillActive = true;
         }
       } catch (err) {
         console.error('Cashfree verification query error:', err.message);
@@ -718,9 +731,15 @@ app.post('/api/payment/verify-order', async (req, res) => {
     }
   }
 
-  const user = db().users.find((u) => u.phone === order.userPhone || u.id === order.userId);
-
   if (!verifiedSuccess) {
+    if (isStillActive && String(gatewayStatus).toUpperCase() === 'POLL') {
+      return res.json({
+        success: false,
+        status: 'PENDING',
+        message: 'पेमेंट प्रक्रियेत आहे...',
+        walletBalance: user ? user.walletBalance : 0,
+      });
+    }
     order.status = 'FAILED';
     const failedReq = {
       id: order.orderId,
