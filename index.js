@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { load, save, db, newId, newToken, hashPassword, verifyPassword, mergeDatabaseState, unifyAccountsByPhone, isGenericUserName } from './db.js';
 import { OPERATORS, plansFor, findOperator } from './catalog.js';
-import { doRecharge, demoFetchBill } from './provider.js';
+import { doRecharge, demoFetchBill, fetchProviderWalletBalance } from './provider.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 load();
@@ -1227,13 +1227,18 @@ app.post('/api/admin/login', (req, res) => {
   res.json({ success: true, token, username });
 });
 
-app.get('/api/admin/overview', requireAdmin, (req, res) => {
+app.get('/api/admin/overview', requireAdmin, async (req, res) => {
   const d = db();
   if (unifyAccountsByPhone(d)) {
     save();
   }
   for (const u of d.users || []) {
     recalculateUserLedger(u);
+  }
+  const liveProviderBalance = await fetchProviderWalletBalance(d.settings?.api);
+  if (liveProviderBalance !== null && !Number.isNaN(liveProviderBalance)) {
+    d.apiWalletBalance = Number(liveProviderBalance.toFixed(2));
+    save();
   }
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayTxns = d.transactions.filter((t) => t.createdAt && t.createdAt.startsWith(todayStr));

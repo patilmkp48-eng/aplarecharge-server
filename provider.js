@@ -230,6 +230,32 @@ async function liveRecharge({ number, apiCode, amount, reqId }, api) {
   }
 }
 
+export async function fetchProviderWalletBalance(api) {
+  if (!api || !api.rechargeUrl || !api.apiKey) return null;
+  const rawUrl = String(api.rechargeUrl).trim().toLowerCase();
+  const cleanToken = String(api.apiKey).split('|')[0].trim();
+  if (!rawUrl.includes('pay2all.in') || !cleanToken) return null;
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch('https://pay2all.in/api/v1/balance', {
+      headers: {
+        Authorization: `Bearer ${cleanToken}`,
+        Accept: 'application/json',
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const j = await res.json();
+    if (j?.data?.balance !== undefined && j?.data?.balance !== null) {
+      return Number(j.data.balance);
+    }
+  } catch (_) {}
+  return null;
+}
+
 export async function doRecharge(params, settings) {
   if (settings.mode === 'live') return liveRecharge(params, settings.api);
   return demoRecharge(params);
