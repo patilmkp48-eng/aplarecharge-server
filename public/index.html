@@ -409,6 +409,28 @@
           </div>
         </div>
 
+        <div class="card p-6 space-y-4 border-rose-500/30">
+          <h3 class="text-base font-bold text-rose-300">🛠️ ॲप मेंटेनन्स मोड व ट्रायल टेस्टर कंट्रोल (App Maintenance &amp; Trial Whitelist)</h3>
+          <p class="text-xs text-slate-400">जेव्हा तुम्हाला ॲपमध्ये नवीन बदल करायचे असतील, तेव्हा मेंटेनन्स मोड चालू करा. यामुळे इतर सर्व ग्राहकांना <b>"App Under Maintenance"</b> दिसेल, पण खालील ट्रायल मोबाईल नंबर्सवर ॲप चाचणीसाठी १००% चालू राहील!</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="text-xs text-slate-300 font-semibold">मेंटेनन्स मोड स्थिती (Maintenance Status)</label>
+              <select id="set_maintenanceMode" class="w-full mt-1 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm">
+                <option value="false">🟢 सामान्य चालू (Normal Active - सर्वांसाठी चालू)</option>
+                <option value="true">🛠️ मेंटेनन्स मोड चालू (Under Maintenance - फक्त ट्रायल नंबर्ससाठी चालू)</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-slate-300 font-semibold">📱 ट्रायल / चाचणीसाठी परवानगी असलेले मोबाईल नंबर (Comma देऊन टाका)</label>
+              <input id="set_maintenanceAllowedPhones" type="text" placeholder="उदा. 8446234037, 9284769734" class="w-full mt-1 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm font-mono" />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="text-xs text-slate-300 font-semibold">ग्राहकांना स्क्रीनवर दिसणारा मेंटेनन्स मेसेज</label>
+              <input id="set_maintenanceMessage" type="text" placeholder="🛠️ AplaRecharge ॲपमध्ये नवीन सुधारणा व अपडेटचे काम चालू आहे. कृपया काही वेळाने पुन्हा प्रयत्न करा!" class="w-full mt-1 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm" />
+            </div>
+          </div>
+        </div>
+
         <div class="card p-6 space-y-4">
           <h3 class="text-base font-bold text-white">💳 तुमचा UPI आणि सूचना बॅनर</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1215,6 +1237,9 @@
       document.getElementById('set_upiName').value = settings.upiName || '';
       document.getElementById('set_supportWhatsapp').value = settings.supportWhatsapp || '8446234037';
       document.getElementById('set_notice').value = settings.notice || '';
+      document.getElementById('set_maintenanceMode').value = settings.maintenanceMode ? 'true' : 'false';
+      document.getElementById('set_maintenanceAllowedPhones').value = settings.maintenanceAllowedPhones || '8446234037';
+      document.getElementById('set_maintenanceMessage').value = settings.maintenanceMessage || '🛠️ AplaRecharge ॲपमध्ये नवीन सुधारणा व अपडेटचे काम चालू आहे. कृपया काही वेळाने पुन्हा प्रयत्न करा!';
       if (settings.paymentGateway) {
         document.getElementById('set_pgProvider').value = settings.paymentGateway.provider || 'UPIGateway';
         document.getElementById('set_pgMode').value = settings.paymentGateway.mode || 'sandbox';
@@ -1319,6 +1344,9 @@
         upiId: document.getElementById('set_upiId').value,
         upiName: document.getElementById('set_upiName').value,
         supportWhatsapp: document.getElementById('set_supportWhatsapp').value,
+        maintenanceMode: document.getElementById('set_maintenanceMode').value === 'true',
+        maintenanceAllowedPhones: document.getElementById('set_maintenanceAllowedPhones').value,
+        maintenanceMessage: document.getElementById('set_maintenanceMessage').value,
         notice: document.getElementById('set_notice').value,
         newPassword: document.getElementById('set_newPass').value,
       };
