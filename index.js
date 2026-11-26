@@ -80,12 +80,15 @@ function recalculateUserLedger(user) {
   const chargedTxns = userTxns.filter(
     (t) => t.status === 'success' || t.status === 'pending' || (t.status === 'failed' && !t.refunded)
   );
-  const totalSpent = chargedTxns.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const totalNetSpent = chargedTxns.reduce(
+    (s, t) => s + Math.max(0, (Number(t.amount) || 0) - (Number(t.cashback) || 0)),
+    0
+  );
 
   const successTxns = userTxns.filter((t) => t.status === 'success');
   const totalCashback = successTxns.reduce((s, t) => s + (Number(t.cashback) || 0), 0);
 
-  user.walletBalance = Number(Math.max(0, base + totalAdded - manualDebit - totalSpent + totalCashback).toFixed(2));
+  user.walletBalance = Number(Math.max(0, base + totalAdded - manualDebit - totalNetSpent).toFixed(2));
   user.totalCashback = Number(totalCashback.toFixed(2));
 }
 
@@ -336,6 +339,11 @@ app.post('/api/client-sync', (req, res) => {
       upiId: s.upiId,
       upiName: s.upiName,
       supportWhatsapp: s.supportWhatsapp || '8446234037',
+      minAppVersionCode: Number(s.minAppVersionCode) || 1,
+      playStoreUrl: s.playStoreUrl || 'https://play.google.com/store/apps/details?id=com.aplarecharge.aplarecharge',
+      maintenanceMode: Boolean(s.maintenanceMode),
+      maintenanceAllowedPhones: String(s.maintenanceAllowedPhones || '8446234037'),
+      maintenanceMessage: String(s.maintenanceMessage || '🛠️ AplaRecharge ॲपमध्ये नवीन सुधारणा व अपडेटचे काम चालू आहे. कृपया काही वेळाने पुन्हा प्रयत्न करा!'),
       minAddMoney: s.minAddMoney,
       paymentGateway: {
         provider: s.paymentGateway?.provider || 'UPIGateway',
@@ -387,15 +395,18 @@ app.post('/api/client-recharge', async (req, res) => {
     return res.status(400).json({ error: `${op.name} सेवा सध्या बंद आहे.` });
   }
 
-  if (user.walletBalance < numAmount) {
-    return res.status(400).json({ error: 'वॉलेटमध्ये पुरेसा बॅलन्स नाही!' });
-  }
-
-  user.walletBalance = Number((user.walletBalance - numAmount).toFixed(2));
   const reqId = newId('TXN');
   const cashback = Number(((numAmount * (comm.userCashback || 0)) / 100).toFixed(2));
+  const netPayable = Number(Math.max(0, numAmount - cashback).toFixed(2));
   const totalCommission = Number(((numAmount * (comm.apiCommission || 0)) / 100).toFixed(2));
   const adminProfit = Number((totalCommission - cashback).toFixed(2));
+
+  if (user.walletBalance + 0.01 < netPayable) {
+    return res.status(400).json({ error: `वॉलेटमध्ये पुरेसा बॅलन्स नाही! (लागणारी रक्कम: ₹${netPayable.toFixed(2)}, शिल्लक: ₹${user.walletBalance.toFixed(2)})` });
+  }
+
+  // Instant Upfront Discount: deduct only (amount - discount) while Pay2All executes full plan amount!
+  user.walletBalance = Number(Math.max(0, user.walletBalance - netPayable).toFixed(2));
 
   const txn = {
     id: reqId,
@@ -408,6 +419,7 @@ app.post('/api/client-recharge', async (req, res) => {
     number: String(number).trim(),
     customerName: '',
     amount: numAmount,
+    netPaid: netPayable,
     cashback,
     adminProfit,
     status: 'pending',
@@ -430,14 +442,13 @@ app.post('/api/client-recharge', async (req, res) => {
 
   if (result.status === 'success') {
     if (cashback > 0) {
-      user.walletBalance = Number((user.walletBalance + cashback).toFixed(2));
       user.totalCashback = Number(((user.totalCashback || 0) + cashback).toFixed(2));
     }
     if (db().apiWalletBalance > 0) {
       db().apiWalletBalance = Number((db().apiWalletBalance - (numAmount - totalCommission)).toFixed(2));
     }
   } else if (result.status === 'failed') {
-    user.walletBalance = Number((user.walletBalance + numAmount).toFixed(2));
+    user.walletBalance = Number((user.walletBalance + netPayable).toFixed(2));
     txn.cashback = 0;
     txn.adminProfit = 0;
     txn.refunded = true;
@@ -474,12 +485,11 @@ function signPaymentOrder(orderId, phone, amount) {
 app.post('/api/payment/create-order', async (req, res) => {
   const { phone, name, amount, preferredApp } = req.body;
   const cleanPhone = String(phone || '9876543210').replace(/\D/g, '');
-  const numAmount = Number(amount);
+  const numAmount = Number(Number(amount).toFixed(2));
   const s = db().settings;
-  const minAmt = s.minAddMoney || 10;
 
-  if (!numAmount || numAmount < minAmt) {
-    return res.status(400).json({ error: `किमान ₹${minAmt} रक्कम टाका.` });
+  if (!numAmount || numAmount < 1) {
+    return res.status(400).json({ error: 'किमान ₹1 रक्कम टाका.' });
   }
 
   const { user } = getOrCreateUserByPhone(cleanPhone, name);
@@ -1067,6 +1077,21 @@ app.get('/api/me', requireUser, (req, res) => {
   res.json({ user: req.user, transactions: myTxns, addMoneyRequests: myAddMoney });
 });
 
+// Delete User Account & Personal Data (Google Play Store Mandatory Account Deletion Policy)
+app.post('/api/user/delete-account', (req, res) => {
+  const cleanPhone = String(req.body?.phone || '').replace(/\D/g, '');
+  if (cleanPhone.length !== 10) {
+    return res.status(400).json({ error: 'कृपया १० अंकी मोबाईल नंबर द्या.' });
+  }
+  const d = db();
+  d.users = (d.users || []).filter((u) => u.phone !== cleanPhone);
+  save();
+  res.json({
+    success: true,
+    message: 'तुमचे खाते आणि वैयक्तिक माहिती कायमची डिलीट करण्यात आली आहे.',
+  });
+});
+
 // Get Plans for Operator
 app.get('/api/plans', (req, res) => {
   const { service, operator } = req.query;
@@ -1109,17 +1134,18 @@ app.post('/api/recharge', requireUser, async (req, res) => {
   }
 
   const user = req.user;
-  if (user.walletBalance < numAmount) {
-    return res.status(400).json({ error: `वॉलेटमध्ये पुरेसा बॅलन्स नाही! (शिल्लक: ₹${user.walletBalance.toFixed(2)})` });
-  }
-
-  // Deduct wallet balance first
-  user.walletBalance = Number((user.walletBalance - numAmount).toFixed(2));
-
   const reqId = newId('TXN');
   const cashback = Number(((numAmount * (comm.userCashback || 0)) / 100).toFixed(2));
+  const netPayable = Number(Math.max(0, numAmount - cashback).toFixed(2));
   const totalCommission = Number(((numAmount * (comm.apiCommission || 0)) / 100).toFixed(2));
   const adminProfit = Number((totalCommission - cashback).toFixed(2));
+
+  if (user.walletBalance + 0.01 < netPayable) {
+    return res.status(400).json({ error: `वॉलेटमध्ये पुरेसा बॅलन्स नाही! (लागणारी रक्कम: ₹${netPayable.toFixed(2)}, शिल्लक: ₹${user.walletBalance.toFixed(2)})` });
+  }
+
+  // Deduct net payable (instant upfront discount)
+  user.walletBalance = Number(Math.max(0, user.walletBalance - netPayable).toFixed(2));
 
   const txn = {
     id: reqId,
@@ -1132,6 +1158,7 @@ app.post('/api/recharge', requireUser, async (req, res) => {
     number: String(number).trim(),
     customerName: customerName || '',
     amount: numAmount,
+    netPaid: netPayable,
     cashback,
     adminProfit,
     status: 'pending',
@@ -1155,15 +1182,14 @@ app.post('/api/recharge', requireUser, async (req, res) => {
 
   if (result.status === 'success') {
     if (cashback > 0) {
-      user.walletBalance = Number((user.walletBalance + cashback).toFixed(2));
       user.totalCashback = Number(((user.totalCashback || 0) + cashback).toFixed(2));
     }
     if (db().apiWalletBalance > 0) {
       db().apiWalletBalance = Number((db().apiWalletBalance - (numAmount - totalCommission)).toFixed(2));
     }
   } else if (result.status === 'failed') {
-    // Auto-refund on immediate failure
-    user.walletBalance = Number((user.walletBalance + numAmount).toFixed(2));
+    // Auto-refund exact netPayable on immediate failure
+    user.walletBalance = Number((user.walletBalance + netPayable).toFixed(2));
     txn.cashback = 0;
     txn.adminProfit = 0;
     txn.refunded = true;
@@ -1286,7 +1312,7 @@ app.get('/api/admin/overview', requireAdmin, async (req, res) => {
 // Update Settings (Mode, Services, API Key, Payment Gateway, Plan API, UPI, Notice, API Wallet Balance)
 app.post('/api/admin/settings', requireAdmin, (req, res) => {
   const d = db();
-  const { mode, services, api, paymentGateway, planApi, upiId, upiName, supportWhatsapp, minAddMoney, notice, apiWalletBalance, newPassword } = req.body;
+  const { mode, services, api, paymentGateway, planApi, upiId, upiName, supportWhatsapp, minAppVersionCode, playStoreUrl, maintenanceMode, maintenanceAllowedPhones, maintenanceMessage, minAddMoney, notice, apiWalletBalance, newPassword } = req.body;
 
   if (mode) d.settings.mode = mode;
   if (services) d.settings.services = { ...d.settings.services, ...services };
@@ -1300,6 +1326,11 @@ app.post('/api/admin/settings', requireAdmin, (req, res) => {
   if (upiId !== undefined) d.settings.upiId = upiId.trim();
   if (upiName !== undefined) d.settings.upiName = upiName.trim();
   if (supportWhatsapp !== undefined) d.settings.supportWhatsapp = String(supportWhatsapp).replace(/\D/g, '').slice(-10) || '8446234037';
+  if (minAppVersionCode !== undefined) d.settings.minAppVersionCode = Number(minAppVersionCode) || 1;
+  if (playStoreUrl !== undefined) d.settings.playStoreUrl = String(playStoreUrl).trim();
+  if (maintenanceMode !== undefined) d.settings.maintenanceMode = Boolean(maintenanceMode);
+  if (maintenanceAllowedPhones !== undefined) d.settings.maintenanceAllowedPhones = String(maintenanceAllowedPhones).trim() || '8446234037';
+  if (maintenanceMessage !== undefined) d.settings.maintenanceMessage = String(maintenanceMessage).trim();
   if (minAddMoney !== undefined) d.settings.minAddMoney = Number(minAddMoney) || 10;
   if (notice !== undefined) d.settings.notice = notice;
   if (apiWalletBalance !== undefined) d.apiWalletBalance = Number(apiWalletBalance) || 0;
@@ -1407,7 +1438,7 @@ app.post('/api/admin/transactions/:id/action', requireAdmin, (req, res) => {
 
   if (action === 'refund' && !txn.refunded && txn.status !== 'success') {
     if (user) {
-      const refundAmt = Number(txn.amount || 0);
+      const refundAmt = Number(Math.max(0, Number(txn.amount || 0) - Number(txn.cashback || 0)).toFixed(2));
       user.walletBalance = Number((user.walletBalance + refundAmt).toFixed(2));
     }
     txn.status = 'failed';
@@ -1417,7 +1448,8 @@ app.post('/api/admin/transactions/:id/action', requireAdmin, (req, res) => {
     txn.message = 'Admin कडून वॉलेटमध्ये Refund देण्यात आला';
   } else if (action === 'markSuccess' && txn.status !== 'success') {
     if (txn.refunded && user) {
-      user.walletBalance = Number((user.walletBalance - txn.amount).toFixed(2));
+      const chargeAmt = Number(Math.max(0, Number(txn.amount || 0) - Number(txn.cashback || 0)).toFixed(2));
+      user.walletBalance = Number(Math.max(0, user.walletBalance - chargeAmt).toFixed(2));
       txn.refunded = false;
     }
     txn.status = 'success';

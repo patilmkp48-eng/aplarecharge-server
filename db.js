@@ -81,6 +81,9 @@ function defaultData() {
         regularPlansUrl: 'https://api.mplan.in/api/Plans.php?apikey={apikey}&cricle=Maharashtra&operator={operator}',
       },
       notice: 'AplaRecharge मध्ये आपले स्वागत आहे! प्रत्येक रिचार्जवर कॅशबॅक मिळवा.',
+      maintenanceMode: false,
+      maintenanceAllowedPhones: '8446234037',
+      maintenanceMessage: '🛠️ AplaRecharge ॲपमध्ये नवीन सुधारणा व अपडेटचे काम चालू आहे. कृपया काही वेळाने पुन्हा प्रयत्न करा!',
       banners: [],
     },
     commissions: defaultCommissions(),
@@ -103,6 +106,9 @@ export function isGenericUserName(name, phone = '') {
   if (!s) return true;
   if (s.includes('?')) return true;
   const cleanPhone = String(phone || '').replace(/\D/g, '');
+  if (cleanPhone && cleanPhone !== '8446234037' && s.toLowerCase() === 'moreshwar patil') {
+    return true;
+  }
   if (cleanPhone && (s === cleanPhone || s === `ग्राहक ${cleanPhone}` || s === `ग्राहक ${cleanPhone.slice(-4)}`)) {
     return true;
   }
@@ -252,6 +258,9 @@ export function mergeDatabaseState(incoming) {
     const incS = incoming.settings;
     if (incS.mode) { data.settings.mode = incS.mode; changed = true; }
     if (incS.notice) { data.settings.notice = incS.notice; changed = true; }
+    if (incS.maintenanceMode !== undefined) { data.settings.maintenanceMode = Boolean(incS.maintenanceMode); changed = true; }
+    if (incS.maintenanceAllowedPhones !== undefined) { data.settings.maintenanceAllowedPhones = String(incS.maintenanceAllowedPhones); changed = true; }
+    if (incS.maintenanceMessage !== undefined) { data.settings.maintenanceMessage = String(incS.maintenanceMessage); changed = true; }
     if (incS.upiId !== undefined && incS.upiId !== '') { data.settings.upiId = incS.upiId; changed = true; }
     if (incS.upiName) { data.settings.upiName = incS.upiName; changed = true; }
     if (incS.minAddMoney !== undefined) { data.settings.minAddMoney = Number(incS.minAddMoney) || 10; changed = true; }
